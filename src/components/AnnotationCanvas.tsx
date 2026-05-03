@@ -40,6 +40,17 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   // History management for undo/redo
   const historyRef = useRef<Drawing[][]>([[]]);
   const historyIndexRef = useRef<number>(0);
+  const imageHistoryRef = useRef<string[]>([imageDataUrl]);
+  const imageHistoryIndexRef = useRef<number>(0);
+
+  // Helper to save image to history (for crop/blur operations)
+  const saveImageToHistory = (imageUrl: string) => {
+    // Remove any future history if we're not at the latest state
+    imageHistoryRef.current = imageHistoryRef.current.slice(0, imageHistoryIndexRef.current + 1);
+    // Add new state to history
+    imageHistoryRef.current.push(imageUrl);
+    imageHistoryIndexRef.current = imageHistoryRef.current.length - 1;
+  };
 
   // Helper to save state to history
   const saveToHistory = (newDrawings: Drawing[]) => {
@@ -51,7 +62,28 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   };
 
   const handleUndo = () => {
-    if (historyIndexRef.current > 0) {
+    // First check if there's image history to undo (crop/blur)
+    if (imageHistoryIndexRef.current > 0) {
+      imageHistoryIndexRef.current--;
+      const previousImage = imageHistoryRef.current[imageHistoryIndexRef.current];
+      setCurrentImageDataUrl(previousImage);
+
+      // Redraw canvas with the previous image
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            redrawCanvas(ctx, img, drawings);
+          }
+        }
+      };
+      img.src = previousImage;
+    } else if (historyIndexRef.current > 0) {
+      // Otherwise undo annotation
       historyIndexRef.current--;
       const previousState = historyRef.current[historyIndexRef.current];
       setDrawings([...previousState]);
@@ -60,7 +92,28 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   };
 
   const handleRedo = () => {
-    if (historyIndexRef.current < historyRef.current.length - 1) {
+    // First check if there's image history to redo (crop/blur)
+    if (imageHistoryIndexRef.current < imageHistoryRef.current.length - 1) {
+      imageHistoryIndexRef.current++;
+      const nextImage = imageHistoryRef.current[imageHistoryIndexRef.current];
+      setCurrentImageDataUrl(nextImage);
+
+      // Redraw canvas with the next image
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            redrawCanvas(ctx, img, drawings);
+          }
+        }
+      };
+      img.src = nextImage;
+    } else if (historyIndexRef.current < historyRef.current.length - 1) {
+      // Otherwise redo annotation
       historyIndexRef.current++;
       const nextState = historyRef.current[historyIndexRef.current];
       setDrawings([...nextState]);
@@ -178,7 +231,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       };
       img.src = currentImageDataUrl;
     }
-  }, [invertBlur, currentTool, isBlurring, blurArea]);
+  }, [invertBlur, currentTool, isBlurring, blurArea, currentImageDataUrl, drawings]);
 
   const redrawCanvas = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, drawnItems: Drawing[], selectedId?: string | null) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -723,6 +776,9 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
       const croppedDataUrl = croppedCanvas.toDataURL('image/png');
 
+      // Save to image history for undo
+      saveImageToHistory(croppedDataUrl);
+
       // Adjust annotation coordinates to fit the cropped image
       const adjustedDrawings = drawings
         .filter(drawing => {
@@ -826,6 +882,9 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       }
 
       const blurredDataUrl = tempCanvas.toDataURL('image/png');
+
+      // Save to image history for undo
+      saveImageToHistory(blurredDataUrl);
 
       // Reset blur mode and update image
       setIsBlurring(false);
