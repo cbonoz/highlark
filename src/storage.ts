@@ -70,9 +70,15 @@ export async function saveAnnotation(annotation: Annotation): Promise<string> {
       console.error('[Storage] Save failed:', request.error);
       reject(request.error);
     };
-    request.onsuccess = () => {
+
+    transaction.oncomplete = () => {
       console.log('[Storage] Annotation saved successfully');
       resolve(annotation.id);
+    };
+
+    transaction.onerror = () => {
+      console.error('[Storage] Transaction failed:', transaction.error);
+      reject(transaction.error);
     };
   });
 }
@@ -129,7 +135,8 @@ export async function deleteAnnotation(id: string): Promise<void> {
     const request = store.delete(id);
 
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
   });
 }
 
@@ -142,7 +149,8 @@ export async function updateAnnotation(annotation: Annotation): Promise<void> {
     const request = store.put(annotation);
 
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
   });
 }
 
@@ -173,7 +181,8 @@ export async function createShare(annotationId: string): Promise<string> {
       const request = store.put(shareData);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(shareId);
+      transaction.oncomplete = () => resolve(shareId);
+      transaction.onerror = () => reject(transaction.error);
     } catch (error) {
       reject(error);
     }

@@ -33,6 +33,43 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const [textPageX, setTextPageX] = useState(0);
   const [textPageY, setTextPageY] = useState(0);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
+  
+  // History management for undo/redo
+  const historyRef = useRef<Drawing[][]>([[]]);
+  const historyIndexRef = useRef<number>(0);
+
+  // Helper to save state to history
+  const saveToHistory = (newDrawings: Drawing[]) => {
+    // Remove any future history if we're not at the latest state
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    // Add new state to history
+    historyRef.current.push([...newDrawings]);
+    historyIndexRef.current = historyRef.current.length - 1;
+  };
+
+  const handleUndo = () => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current--;
+      const previousState = historyRef.current[historyIndexRef.current];
+      setDrawings([...previousState]);
+      redrawWithDrawings([...previousState]);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyIndexRef.current++;
+      const nextState = historyRef.current[historyIndexRef.current];
+      setDrawings([...nextState]);
+      redrawWithDrawings([...nextState]);
+    }
+  };
+
+  // Helper to update drawings and save to history
+  const updateDrawings = (newDrawings: Drawing[]) => {
+    setDrawings(newDrawings);
+    saveToHistory(newDrawings);
+  };
 
   // Load image on mount
   useEffect(() => {
@@ -419,6 +456,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     if (currentTool === 'pointer') {
       if (draggingAnnotationId) {
         setDraggingAnnotationId(null);
+        saveToHistory(drawings);
         redrawWithDrawings(drawings);
       }
       return;
@@ -447,7 +485,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     };
 
     const updatedDrawings = [...drawings, newDrawing];
-    setDrawings(updatedDrawings);
+    updateDrawings(updatedDrawings);
     setIsDrawing(false);
   };
 
@@ -470,7 +508,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     };
 
     const updatedDrawings = [...drawings, newDrawing];
-    setDrawings(updatedDrawings);
+    updateDrawings(updatedDrawings);
     setTextInput('');
     setShowTextInput(false);
     redrawWithDrawings(updatedDrawings);
@@ -496,12 +534,6 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
     const annotatedDataUrl = canvas.toDataURL('image/png');
     onSave(annotatedDataUrl, drawings);
-  };
-
-  const handleUndo = () => {
-    const updatedDrawings = drawings.slice(0, -1);
-    setDrawings(updatedDrawings);
-    redrawWithDrawings(updatedDrawings);
   };
 
   const applyCrop = () => {
@@ -535,23 +567,43 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
       const croppedDataUrl = croppedCanvas.toDataURL('image/png');
       
-      // Reset crop mode and clear drawings
+      // Adjust annotation coordinates to fit the cropped image
+      const adjustedDrawings = drawings
+        .filter(drawing => {
+          // Keep annotations that are at least partially within the crop area
+          const annotationRight = drawing.x + drawing.width;
+          const annotationBottom = drawing.y + drawing.height;
+          return (
+            drawing.x < cropArea.x + cropArea.width &&
+            annotationRight > cropArea.x &&
+            drawing.y < cropArea.y + cropArea.height &&
+            annotationBottom > cropArea.y
+          );
+        })
+        .map(drawing => ({
+          ...drawing,
+          x: drawing.x - cropArea.x,
+          y: drawing.y - cropArea.y,
+        }));
+      
+      // Reset crop mode and update image and drawings
       setIsCropping(false);
       setCropArea(null);
-      setDrawings([]);
+      setCurrentImageDataUrl(croppedDataUrl);
+      updateDrawings(adjustedDrawings);
       
-      // Update the image and redraw the canvas
+      // Update canvas dimensions and redraw
       const newImg = new Image();
       newImg.onload = () => {
         canvas.width = newImg.width;
         canvas.height = newImg.height;
         setCanvasDimensions({ width: newImg.width, height: newImg.height });
-        const canvasCtx = canvas.getContext('2d');
-        if (canvasCtx) {
-          canvasCtx.drawImage(newImg, 0, 0);
+        
+        // Redraw canvas with the new cropped image and adjusted drawings
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          redrawCanvas(ctx, newImg, adjustedDrawings);
         }
-        // Update state after canvas is redrawn so dimensions display immediately
-        setCurrentImageDataUrl(croppedDataUrl);
       };
       newImg.src = croppedDataUrl;
     };
@@ -650,8 +702,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
                     ? { ...drawing, color: newColor }
                     : drawing
                 );
-                setDrawings(updatedDrawings);
-                redrawWithDrawings(updatedDrawings);
+                updateDrawings(updatedDrawings);
               }
             }}
             className="w-12 h-10 cursor-pointer"
@@ -690,6 +741,8 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
                 setFontSize(newSize);
                 setLineWidth(newSize);
               }
+              // Save updated state to history
+              saveToHistory(updatedDrawings);
             }}
             className="w-24"
             title={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.type === 'text' ? "Font size" : "Border width") : "Size for new annotations"}

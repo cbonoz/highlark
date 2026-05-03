@@ -35,8 +35,10 @@ Capture any screen, add text/arrows/images, and share professional markups insta
 - ✓ **Rectangles** - Outline important areas
 - ✓ **Circles** - Highlight circular regions
 - ✓ **Lines** - Draw straight lines
+- ✓ **Crop** - Crop screenshots and adjust annotations automatically
 - ✓ **Color Picker** - Choose any color for annotations
-- ✓ **Undo** - Easily undo your last action
+- ✓ **Size/Font Control** - Adjust annotation size, line width, and font size
+- ✓ **Multi-Step Undo** - Undo multiple actions including drawings, text, crops, color changes, and placements
 
 ### Storage & Management
 - ✓ **Local Gallery** - All annotations stored securely in your browser using IndexedDB
