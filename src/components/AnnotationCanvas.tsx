@@ -51,28 +51,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   };
 
   const handleUndo = () => {
-    // First check if there's image history to undo
-    if (imageHistoryIndexRef.current > 0) {
-      imageHistoryIndexRef.current--;
-      const previousImage = imageHistoryRef.current[imageHistoryIndexRef.current];
-      setCurrentImageDataUrl(previousImage);
-
-      // Redraw canvas with the previous image
-      const img = new Image();
-      img.onload = () => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            redrawCanvas(ctx, img, drawings);
-          }
-        }
-      };
-      img.src = previousImage;
-    } else if (historyIndexRef.current > 0) {
-      // Otherwise undo annotation
+    if (historyIndexRef.current > 0) {
       historyIndexRef.current--;
       const previousState = historyRef.current[historyIndexRef.current];
       setDrawings([...previousState]);
@@ -81,28 +60,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   };
 
   const handleRedo = () => {
-    // First check if there's image history to redo
-    if (imageHistoryIndexRef.current < imageHistoryRef.current.length - 1) {
-      imageHistoryIndexRef.current++;
-      const nextImage = imageHistoryRef.current[imageHistoryIndexRef.current];
-      setCurrentImageDataUrl(nextImage);
-
-      // Redraw canvas with the next image
-      const img = new Image();
-      img.onload = () => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            redrawCanvas(ctx, img, drawings);
-          }
-        }
-      };
-      img.src = nextImage;
-    } else if (historyIndexRef.current < historyRef.current.length - 1) {
-      // Otherwise redo annotation
+    if (historyIndexRef.current < historyRef.current.length - 1) {
       historyIndexRef.current++;
       const nextState = historyRef.current[historyIndexRef.current];
       setDrawings([...nextState]);
@@ -820,9 +778,6 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Save current image to history before applying blur
-    saveImageToHistory(currentImageDataUrl);
-
     const img = new Image();
     img.onload = () => {
       const tempCanvas = document.createElement('canvas');
@@ -872,9 +827,6 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
       const blurredDataUrl = tempCanvas.toDataURL('image/png');
 
-      // Save blurred image to history
-      saveImageToHistory(blurredDataUrl);
-
       // Reset blur mode and update image
       setIsBlurring(false);
       setBlurArea(null);
@@ -895,6 +847,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     };
     img.src = currentImageDataUrl;
   };
+
 
   const cancelBlur = () => {
     setIsBlurring(false);
