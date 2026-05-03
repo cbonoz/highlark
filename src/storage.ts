@@ -10,7 +10,7 @@ export interface Annotation {
 
 export interface Drawing {
   id: string;
-  type: 'text' | 'arrow' | 'rect' | 'circle' | 'line' | 'image';
+  type: 'text' | 'arrow' | 'rect' | 'circle' | 'line' | 'image' | 'blur';
   x: number;
   y: number;
   width: number;

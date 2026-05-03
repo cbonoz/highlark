@@ -60,7 +60,7 @@ export function App() {
       // Store in IndexedDB temporarily
       console.log('[Popup] Storing image in IndexedDB...');
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const req = indexedDB.open('HighlarkDB', 3);        
+        const req = indexedDB.open('HighlarkDB', 3);
         req.onupgradeneeded = (event) => {
           const database = (event.target as IDBOpenDBRequest).result;
           if (!database.objectStoreNames.contains('temp')) {
@@ -79,7 +79,7 @@ export function App() {
                 req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
       });
-      
+
       const store = db.transaction(['temp'], 'readwrite').objectStore('temp');
       await new Promise<void>((resolve, reject) => {
         const putData = { data: imageData };
@@ -131,7 +131,7 @@ export function App() {
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
       });
-      
+
       const store = db.transaction(['temp'], 'readwrite').objectStore('temp');
       await new Promise<void>((resolve, reject) => {
         const req = store.put({ data: imageData }, 'screenshot');
@@ -219,7 +219,7 @@ export function App() {
 
   if (view === 'gallery') {
     const sortedAnnotations = [...annotations].sort((a, b) => b.timestamp - a.timestamp);
-    
+
     return (
       <div className="w-full max-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white" style={{ width: '600px', height: '700px' }}>
         <div className="p-4 border-b border-slate-700">
@@ -297,7 +297,7 @@ export function App() {
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="p-2 bg-slate-700">
                     <p className="text-xs font-semibold truncate">{annotation.title}</p>
                     <p className="text-xs text-slate-400 truncate">

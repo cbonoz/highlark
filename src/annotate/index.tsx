@@ -14,15 +14,15 @@ function AnnotateApp() {
   useEffect(() => {
     // Get image data from IndexedDB with retry logic
     console.log('[Annotate] Component mounted, loading image from IndexedDB...');
-    
+
     const loadImage = async (retryCount = 0) => {
       try {
         console.log(`[Annotate] Loading image (attempt ${retryCount + 1}/5)...`);
         setRetryAttempt(retryCount + 1);
-        
+
         const db = await new Promise<IDBDatabase>((resolve, reject) => {
           const req = indexedDB.open('HighlarkDB', 3);
-        
+
           req.onupgradeneeded = (event) => {
             console.log('[Annotate] Database upgrade needed');
             const database = (event.target as IDBOpenDBRequest).result;
@@ -39,7 +39,7 @@ function AnnotateApp() {
               database.createObjectStore('shares', { keyPath: 'shareId' });
             }
           };
-        
+
           req.onsuccess = () => {
             console.log('[Annotate] Database opened successfully');
             resolve(req.result);
@@ -49,14 +49,14 @@ function AnnotateApp() {
             reject(req.error);
           };
         });
-        
+
         console.log('[Annotate] Database connection established, getting screenshot from temp store...');
         const store = db.transaction(['temp'], 'readonly').objectStore('temp');
         const result = await new Promise<any>((resolve, reject) => {
           const req = store.get('screenshot');
           req.onsuccess = () => {
-            console.log('[Annotate] Got result from store:', { 
-              hasData: !!req.result?.data, 
+            console.log('[Annotate] Got result from store:', {
+              hasData: !!req.result?.data,
               resultType: typeof req.result,
               resultKeys: req.result ? Object.keys(req.result) : [],
               dataSize: req.result?.data?.length,
@@ -70,7 +70,7 @@ function AnnotateApp() {
             reject(req.error);
           };
         });
-        
+
         if (result?.data && result.data.length > 0) {
           console.log('[Annotate] Image loaded successfully, size:', result.data.length);
           // Validate it's a data URL
@@ -79,7 +79,7 @@ function AnnotateApp() {
             setImageData(result.data);
             setLoading(false);
             setError("");
-            
+
             // Clear the temporary data
             console.log('[Annotate] Clearing temporary storage...');
             const clearStore = db.transaction(['temp'], 'readwrite').objectStore('temp');
@@ -112,7 +112,7 @@ function AnnotateApp() {
         }
       }
     };
-    
+
     loadImage();
   }, []);
 

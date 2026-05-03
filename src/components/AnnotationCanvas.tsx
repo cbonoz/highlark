@@ -7,7 +7,7 @@ export interface CanvasProps {
   onCancel: () => void;
 }
 
-type DrawingTool = 'text' | 'arrow' | 'rect' | 'circle' | 'line' | 'eraser' | 'pointer' | 'crop';
+type DrawingTool = 'text' | 'arrow' | 'rect' | 'circle' | 'line' | 'eraser' | 'pointer' | 'crop' | 'blur';
 
 export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,11 +29,13 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [cropArea, setCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [isBlurring, setIsBlurring] = useState(false);
+  const [blurArea, setBlurArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [currentImageDataUrl, setCurrentImageDataUrl] = useState(imageDataUrl);
   const [textPageX, setTextPageX] = useState(0);
   const [textPageY, setTextPageY] = useState(0);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
-  
+
   // History management for undo/redo
   const historyRef = useRef<Drawing[][]>([[]]);
   const historyIndexRef = useRef<number>(0);
@@ -76,12 +78,12 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     console.log('[Canvas] Mounting, imageDataUrl length:', imageDataUrl?.length || 0);
     console.log('[Canvas] imageDataUrl type:', typeof imageDataUrl);
     console.log('[Canvas] imageDataUrl first 100 chars:', imageDataUrl?.substring(0, 100) || 'EMPTY');
-    
+
     if (!imageDataUrl) {
       console.warn('[Canvas] No imageDataUrl provided');
       return;
     }
-    
+
     setCurrentImageDataUrl(imageDataUrl);
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -290,6 +292,15 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       return;
     }
 
+    // Handle blur tool
+    if (currentTool === 'blur') {
+      setIsBlurring(true);
+      setStartX(x);
+      setStartY(y);
+      setBlurArea({ x: Math.floor(x), y: Math.floor(y), width: 0, height: 0 });
+      return;
+    }
+
     // Handle pointer tool - check for existing annotations to drag
     if (currentTool === 'pointer') {
       const annotation = getAnnotationAtPoint(x, y);
@@ -345,7 +356,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       const height = Math.abs(y - startY);
       const left = Math.min(x, startX);
       const top = Math.min(y, startY);
-      
+
       setCropArea({
         x: Math.floor(left),
         y: Math.floor(top),
@@ -383,6 +394,57 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
         // Draw crop border
         ctx.strokeStyle = '#00FF00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(left, top, width, height);
+      };
+      img.src = currentImageDataUrl;
+      return;
+    }
+
+    // Handle blur mode
+    if (currentTool === 'blur' && isBlurring && blurArea !== null) {
+      const width = Math.abs(x - startX);
+      const height = Math.abs(y - startY);
+      const left = Math.min(x, startX);
+      const top = Math.min(y, startY);
+
+      setBlurArea({
+        x: Math.floor(left),
+        y: Math.floor(top),
+        width: Math.floor(width),
+        height: Math.floor(height),
+      });
+
+      // Visualize blur area
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const img = new Image();
+      img.onload = () => {
+        redrawCanvas(ctx, img, drawings);
+
+        // Apply blur effect to the selected area for preview
+        ctx.filter = 'blur(15px)';
+        ctx.drawImage(
+          img,
+          left,
+          top,
+          width,
+          height,
+          left,
+          top,
+          width,
+          height
+        );
+        ctx.filter = 'none';
+
+        // Redraw annotations on top
+        drawings.forEach((drawing) => {
+          drawItem(ctx, drawing);
+        });
+
+        // Draw blur border in blue
+        ctx.strokeStyle = '#3B82F6';
         ctx.lineWidth = 2;
         ctx.strokeRect(left, top, width, height);
       };
@@ -454,6 +516,12 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     // Handle crop mode
     if (currentTool === 'crop') {
       setIsCropping(false);
+      return;
+    }
+
+    // Handle blur mode
+    if (currentTool === 'blur') {
+      setIsBlurring(false);
       return;
     }
 
@@ -571,7 +639,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       );
 
       const croppedDataUrl = croppedCanvas.toDataURL('image/png');
-      
+
       // Adjust annotation coordinates to fit the cropped image
       const adjustedDrawings = drawings
         .filter(drawing => {
@@ -590,20 +658,20 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
           x: drawing.x - cropArea.x,
           y: drawing.y - cropArea.y,
         }));
-      
+
       // Reset crop mode and update image and drawings
       setIsCropping(false);
       setCropArea(null);
       setCurrentImageDataUrl(croppedDataUrl);
       updateDrawings(adjustedDrawings);
-      
+
       // Update canvas dimensions and redraw
       const newImg = new Image();
       newImg.onload = () => {
         canvas.width = newImg.width;
         canvas.height = newImg.height;
         setCanvasDimensions({ width: newImg.width, height: newImg.height });
-        
+
         // Redraw canvas with the new cropped image and adjusted drawings
         const ctx = canvas.getContext('2d');
         if (ctx) {
@@ -618,6 +686,67 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const cancelCrop = () => {
     setIsCropping(false);
     setCropArea(null);
+    redrawWithDrawings(drawings);
+  };
+
+  const applyBlur = () => {
+    if (!blurArea) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) return;
+
+      // Draw the original image
+      tempCtx.drawImage(img, 0, 0);
+
+      // Apply blur using canvas filter
+      tempCtx.filter = 'blur(20px)';
+      tempCtx.drawImage(
+        img,
+        blurArea.x,
+        blurArea.y,
+        blurArea.width,
+        blurArea.height,
+        blurArea.x,
+        blurArea.y,
+        blurArea.width,
+        blurArea.height
+      );
+      tempCtx.filter = 'none';
+
+      const blurredDataUrl = tempCanvas.toDataURL('image/png');
+
+      // Reset blur mode and update image
+      setIsBlurring(false);
+      setBlurArea(null);
+      setCurrentImageDataUrl(blurredDataUrl);
+
+      // Redraw canvas with new image
+      const newImg = new Image();
+      newImg.onload = () => {
+        canvas.width = newImg.width;
+        canvas.height = newImg.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          redrawCanvas(ctx, newImg, drawings);
+        }
+      };
+      newImg.src = blurredDataUrl;
+    };
+    img.src = currentImageDataUrl;
+  };
+
+  const cancelBlur = () => {
+    setIsBlurring(false);
+    setBlurArea(null);
     redrawWithDrawings(drawings);
   };
 
@@ -688,6 +817,15 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
         >
           Crop
         </button>
+        <button
+          onClick={() => {
+            setCurrentTool('blur');
+            setSelectedAnnotationId(null);
+          }}
+          className={`px-3 py-2 rounded ${currentTool === 'blur' ? 'bg-blue-600' : 'bg-gray-700'}`}
+        >
+          Blur
+        </button>
 
         <div className="px-3 py-2 bg-gray-700 rounded text-white text-sm flex items-center">
           {canvasDimensions.width > 0 ? `${canvasDimensions.width} × ${canvasDimensions.height} px` : 'Loading...'}
@@ -720,7 +858,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             value={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.fontSize || drawings.find(d => d.id === selectedAnnotationId)?.lineWidth || 16) : fontSize}
             onChange={(e) => {
               const newSize = Number(e.target.value);
-              
+
               if (selectedAnnotationId) {
                 const selectedDrawing = drawings.find(d => d.id === selectedAnnotationId);
                 if (selectedDrawing?.type === 'text') {
@@ -804,6 +942,20 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             Apply Crop
           </button>
           <button onClick={cancelCrop} className="px-4 py-2 bg-red-600 rounded hover:bg-red-700">
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {blurArea && currentTool === 'blur' && (
+        <div className="absolute z-50 bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 p-4 rounded shadow-lg flex gap-2">
+          <div className="text-white text-sm mr-4">
+            {blurArea.width} x {blurArea.height}
+          </div>
+          <button onClick={applyBlur} className="px-4 py-2 bg-green-600 rounded hover:bg-green-700">
+            Apply Blur
+          </button>
+          <button onClick={cancelBlur} className="px-4 py-2 bg-red-600 rounded hover:bg-red-700">
             Cancel
           </button>
         </div>
