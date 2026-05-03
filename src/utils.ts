@@ -31,12 +31,12 @@ export const storage = {
 		return chrome.storage.sync
 			.set({ [key]: value })
 			.then(() => value)
-			.catch(console.log);
+			.catch(() => undefined);
 	},
 	get: async (key: string) => {
 		return chrome.storage.sync
 			.get(key)
 			.then((result) => result[key])
-			.catch(console.log);
+			.catch(() => undefined);
 	},
 };

@@ -59,7 +59,7 @@ function getDatabase(): Promise<IDBDatabase> {
 
 export async function saveAnnotation(annotation: Annotation): Promise<string> {
   const database = await getDatabase();
-  console.log('[Storage] Saving annotation:', { id: annotation.id, title: annotation.title });
+
 
   return new Promise((resolve, reject) => {
     const transaction = database.transaction([STORE_NAME], 'readwrite');
@@ -67,17 +67,17 @@ export async function saveAnnotation(annotation: Annotation): Promise<string> {
     const request = store.put(annotation);
 
     request.onerror = () => {
-      console.error('[Storage] Save failed:', request.error);
+
       reject(request.error);
     };
 
     transaction.oncomplete = () => {
-      console.log('[Storage] Annotation saved successfully');
+
       resolve(annotation.id);
     };
 
     transaction.onerror = () => {
-      console.error('[Storage] Transaction failed:', transaction.error);
+
       reject(transaction.error);
     };
   });

@@ -121,6 +121,15 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     }
   };
 
+  const handleDeleteSelected = () => {
+    if (!selectedAnnotationId) return;
+
+    const updatedDrawings = drawings.filter(d => d.id !== selectedAnnotationId);
+    updateDrawings(updatedDrawings);
+    setSelectedAnnotationId(null);
+    redrawWithDrawings(updatedDrawings);
+  };
+
   // Helper to update drawings and save to history
   const updateDrawings = (newDrawings: Drawing[]) => {
     setDrawings(newDrawings);
@@ -129,45 +138,29 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
   // Load image on mount
   useEffect(() => {
-    console.log('[Canvas] Mounting, imageDataUrl length:', imageDataUrl?.length || 0);
-    console.log('[Canvas] imageDataUrl type:', typeof imageDataUrl);
-    console.log('[Canvas] imageDataUrl first 100 chars:', imageDataUrl?.substring(0, 100) || 'EMPTY');
-
     if (!imageDataUrl) {
-      console.warn('[Canvas] No imageDataUrl provided');
       return;
     }
 
     setCurrentImageDataUrl(imageDataUrl);
     const canvas = canvasRef.current;
     if (!canvas) {
-      console.error('[Canvas] Canvas ref not available');
       return;
     }
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.error('[Canvas] Could not get canvas context');
       return;
     }
 
     const img = new Image();
     img.onload = () => {
-      console.log('[Canvas] Image loaded successfully, dimensions:', img.width, 'x', img.height);
       canvas.width = img.width;
       canvas.height = img.height;
       setCanvasDimensions({ width: img.width, height: img.height });
       ctx.drawImage(img, 0, 0);
       redrawCanvas(ctx, img, []);
-      console.log('[Canvas] Image drawn to canvas');
     };
-    img.onerror = (e) => {
-      console.error('[Canvas] Image failed to load, error:', e);
-    };
-    img.onabort = () => {
-      console.error('[Canvas] Image loading aborted');
-    };
-    console.log('[Canvas] Setting image src to:', imageDataUrl.substring(0, 80));
     img.src = imageDataUrl;
   }, [imageDataUrl]);
 
@@ -232,6 +225,19 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       img.src = currentImageDataUrl;
     }
   }, [invertBlur, currentTool, blurArea, currentImageDataUrl, drawings]);
+
+  // Handle keyboard shortcuts (Delete/Backspace to delete selected annotation)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedAnnotationId) {
+        e.preventDefault();
+        handleDeleteSelected();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedAnnotationId]);
 
   const redrawCanvas = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, drawnItems: Drawing[], selectedId?: string | null) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -1056,16 +1062,25 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             title={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.type === 'text' ? "Font size" : "Border width") : "Size for new annotations"}
           />
           {selectedAnnotationId && (
-            <button
-              onClick={() => {
-                setSelectedAnnotationId(null);
-                redrawWithDrawings(drawings);
-              }}
-              className="px-3 py-2 bg-green-600 rounded text-white text-sm flex items-center hover:bg-green-700 cursor-pointer"
-              title="Click to deselect"
-            >
-              ✓ Selected
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  setSelectedAnnotationId(null);
+                  redrawWithDrawings(drawings);
+                }}
+                className="px-3 py-2 bg-green-600 rounded text-white text-sm flex items-center hover:bg-green-700 cursor-pointer"
+                title="Click to deselect"
+              >
+                ✓ Selected
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="px-3 py-2 bg-red-600 rounded text-white text-sm hover:bg-red-700"
+                title="Delete selected annotation (Delete key)"
+              >
+                Delete
+              </button>
+            </>
           )}
           <button onClick={handleUndo} className="px-3 py-2 bg-gray-700 rounded">
             Undo

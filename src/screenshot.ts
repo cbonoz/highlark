@@ -1,6 +1,5 @@
 export async function captureVisibleTab(): Promise<string> {
   try {
-    console.log('[Screenshot] Capturing visible tab...');
     const canvas = await chrome.tabs.captureVisibleTab(undefined, {
       format: 'png',
       quality: 92,
@@ -10,15 +9,12 @@ export async function captureVisibleTab(): Promise<string> {
       throw new Error('captureVisibleTab returned empty');
     }
     
-    console.log('[Screenshot] Capture successful, converting to blob...');
     // Convert data URL to blob and back to ensure it's in the right format
     const blob = dataUrlToBlob(canvas);
     const dataUrl = await blobToDataUrl(blob);
     
-    console.log('[Screenshot] Conversion complete, size:', dataUrl.length);
     return dataUrl;
   } catch (error) {
-    console.error('[Screenshot] Failed to capture:', error);
     throw error;
   }
 }
@@ -30,7 +26,6 @@ export async function captureScreen(): Promise<string> {
     });
     return canvas;
   } catch (error) {
-    console.error('Failed to capture screen:', error);
     throw error;
   }
 }
@@ -51,7 +46,6 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 
     return new Blob([u8arr], { type: 'image/png' });
   } catch (error) {
-    console.error('[Screenshot] Error converting dataUrl to blob:', error);
     throw error;
   }
 }

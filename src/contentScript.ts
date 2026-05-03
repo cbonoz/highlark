@@ -1,5 +1,5 @@
 // Content script for Highlark extension
-console.log('Highlark content script loaded');
+
 
 // Listen for messages from the extension
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
