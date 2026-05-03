@@ -1,0 +1,136 @@
+<svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="heroBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0F172A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="400" fill="url(#heroBg)"/>
+
+  <!-- Left side - Text -->
+  <g id="text-section">
+    <!-- Main heading -->
+    <text x="50" y="80" font-family="Arial, sans-serif" font-size="56" font-weight="bold" fill="#FFFFFF">
+      Highlark
+    </text>
+
+    <!-- Subtitle -->
+    <text x="50" y="130" font-family="Arial, sans-serif" font-size="28" fill="#94A3B8">
+      Screenshot Annotator
+    </text>
+
+    <!-- Description -->
+    <text x="50" y="170" font-family="Arial, sans-serif" font-size="16" fill="#CBD5E1" font-weight="normal">
+      Capture, annotate, and share screenshots instantly.
+    </text>
+    <text x="50" y="195" font-family="Arial, sans-serif" font-size="16" fill="#CBD5E1" font-weight="normal">
+      Privacy first. Open source. No tracking.
+    </text>
+
+    <!-- Feature dots -->
+    <circle cx="50" cy="245" r="4" fill="#10B981"/>
+    <text x="65" y="250" font-family="Arial, sans-serif" font-size="14" fill="#E2E8F0">
+      Add arrows, text, shapes
+    </text>
+
+    <circle cx="50" cy="275" r="4" fill="#F59E0B"/>
+    <text x="65" y="280" font-family="Arial, sans-serif" font-size="14" fill="#E2E8F0">
+      Local storage - nothing uploaded
+    </text>
+
+    <circle cx="50" cy="305" r="4" fill="#EF4444"/>
+    <text x="65" y="310" font-family="Arial, sans-serif" font-size="14" fill="#E2E8F0">
+      Generate shareable links
+    </text>
+
+    <!-- CTA Button -->
+    <rect x="50" y="340" width="200" height="45" fill="url(#accentGrad)" rx="8"/>
+    <text x="150" y="370" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#FFFFFF" text-anchor="middle">
+      Install Extension
+    </text>
+  </g>
+
+  <!-- Right side - Visual mockup -->
+  <g id="mockup-section" transform="translate(650, 50)">
+    <!-- Browser window frame -->
+    <rect width="500" height="300" fill="#1E293B" rx="12" stroke="#475569" stroke-width="2"/>
+
+    <!-- Title bar -->
+    <rect width="500" height="40" fill="#0F172A" rx="12 12 0 0" stroke="#475569" stroke-width="2"/>
+    <circle cx="20" cy="20" r="6" fill="#EF4444"/>
+    <circle cx="50" cy="20" r="6" fill="#F59E0B"/>
+    <circle cx="80" cy="20" r="6" fill="#10B981"/>
+
+    <!-- Address bar -->
+    <rect x="15" y="52" width="470" height="28" fill="#334155" rx="6"/>
+    <text x="25" y="72" font-family="Arial, sans-serif" font-size="12" fill="#94A3B8">
+      example.com
+    </text>
+
+    <!-- Screenshot content area with annotations -->
+    <rect x="15" y="95" width="470" height="195" fill="#0F172A" rx="4"/>
+
+    <!-- Placeholder content -->
+    <line x1="30" y1="115" x2="450" y2="115" stroke="#475569" stroke-width="1.5"/>
+    <line x1="30" y1="135" x2="450" y2="135" stroke="#475569" stroke-width="1.5"/>
+    <line x1="30" y1="155" x2="450" y2="155" stroke="#475569" stroke-width="1.5"/>
+    <line x1="30" y1="175" x2="450" y2="175" stroke="#475569" stroke-width="1.5"/>
+
+    <!-- Annotation: Arrow -->
+    <defs>
+      <marker id="heroArrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+        <polygon points="0 0, 10 3, 0 6" fill="#FFD700" />
+      </marker>
+    </defs>
+    <line x1="80" y1="125" x2="200" y2="165" stroke="#FFD700" stroke-width="3" marker-end="url(#heroArrow)"/>
+
+    <!-- Annotation: Circle highlight -->
+    <circle cx="120" cy="180" r="25" fill="none" stroke="#FF6B6B" stroke-width="2.5"/>
+
+    <!-- Annotation: Text label -->
+    <rect x="260" y="120" width="140" height="35" fill="#10B981" rx="4" opacity="0.8"/>
+    <text x="330" y="142" font-family="Arial, sans-serif" font-size="12" fill="#FFFFFF" text-anchor="middle" font-weight="bold">
+      Important Section
+    </text>
+
+    <!-- Annotation toolbar (indicating editor) -->
+    <g id="toolbar">
+      <rect x="30" y="305" width="440" height="30" fill="#334155" rx="4"/>
+
+      <!-- Tool buttons -->
+      <circle cx="50" cy="320" r="7" fill="#3B82F6" opacity="0.7"/>
+      <text x="67" y="324" font-family="Arial, sans-serif" font-size="11" fill="#E2E8F0">Arrow</text>
+
+      <circle cx="140" cy="320" r="7" fill="#3B82F6" opacity="0.5"/>
+      <text x="157" y="324" font-family="Arial, sans-serif" font-size="11" fill="#94A3B8">Text</text>
+
+      <circle cx="220" cy="320" r="7" fill="#3B82F6" opacity="0.5"/>
+      <text x="237" y="324" font-family="Arial, sans-serif" font-size="11" fill="#94A3B8">Shapes</text>
+
+      <!-- Color picker indicator -->
+      <rect x="340" y="313" width="16" height="16" fill="#FFD700" rx="2"/>
+      <text x="365" y="324" font-family="Arial, sans-serif" font-size="11" fill="#94A3B8">Color</text>
+    </g>
+  </g>
+
+  <!-- Floating badges -->
+  <g id="badges">
+    <!-- Open Source badge -->
+    <rect x="100" y="20" width="140" height="30" fill="#10B981" rx="15" opacity="0.2"/>
+    <text x="170" y="40" font-family="Arial, sans-serif" font-size="13" fill="#10B981" text-anchor="middle" font-weight="bold">
+      ✓ Open Source
+    </text>
+
+    <!-- Privacy badge -->
+    <rect x="280" y="20" width="140" height="30" fill="#3B82F6" rx="15" opacity="0.2"/>
+    <text x="350" y="40" font-family="Arial, sans-serif" font-size="13" fill="#3B82F6" text-anchor="middle" font-weight="bold">
+      🔒 Privacy First
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,37 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad128" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" fill="url(#grad128)" rx="20"/>
+  <rect x="20" y="24" width="88" height="80" fill="none" stroke="#FFFFFF" stroke-width="4" rx="4"/>
+  
+  <!-- Grid lines for content -->
+  <line x1="28" y1="40" x2="100" y2="40" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
+  <line x1="28" y1="56" x2="100" y2="56" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
+  <line x1="28" y1="72" x2="100" y2="72" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
+  
+  <!-- Annotation arrow -->
+  <defs>
+    <marker id="arrowhead-128" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#FFD700" />
+    </marker>
+  </defs>
+  <line x1="50" y1="48" x2="85" y2="64" stroke="#FFD700" stroke-width="3.5" marker-end="url(#arrowhead-128)"/>
+  
+  <!-- Highlight circle -->
+  <circle cx="40" cy="62" r="7" fill="none" stroke="#FF6B6B" stroke-width="2.5"/>
+  
+  <!-- Text box annotation -->
+  <rect x="52" y="78" width="40" height="16" fill="none" stroke="#10B981" stroke-width="2" rx="2"/>
+  <line x1="56" y1="84" x2="88" y2="84" stroke="#10B981" stroke-width="1.5" opacity="0.8"/>
+  
+  <!-- Sparkle effect -->
+  <g id="sparkle-128">
+    <circle cx="110" cy="30" r="4" fill="#FFD700"/>
+    <circle cx="118" cy="24" r="2.5" fill="#FFD700" opacity="0.7"/>
+    <circle cx="115" cy="38" r="2" fill="#FFD700" opacity="0.5"/>
+  </g>
+</svg>
