@@ -198,6 +198,10 @@ export function App() {
     downloadImage(annotation.annotatedImageData, `highlark-${timestamp}.png`);
   };
 
+  const handleOpenDownloads = () => {
+    chrome.downloads.showDefaultFolder();
+  };
+
 
 
   if (view === 'canvas') {
@@ -221,15 +225,24 @@ export function App() {
         <div className="p-4 border-b border-slate-700">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Gallery</h2>
+              <h2 className="text-2xl font-bold">Recents</h2>
               <p className="text-sm text-slate-400 mt-1">{annotations.length} annotation{annotations.length !== 1 ? 's' : ''}</p>
             </div>
-            <button
-              onClick={() => setView('home')}
-              className="text-blue-400 hover:text-blue-300 font-semibold"
-            >
-              ← Back
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleOpenDownloads}
+                className="text-blue-400 hover:text-blue-300 font-semibold text-sm px-2 py-1 rounded hover:bg-slate-700 transition"
+                title="Open Downloads Folder"
+              >
+                📁 Downloads
+              </button>
+              <button
+                onClick={() => setView('home')}
+                className="text-blue-400 hover:text-blue-300 font-semibold"
+              >
+                ← Back
+              </button>
+            </div>
           </div>
         </div>
 
@@ -278,9 +291,9 @@ export function App() {
                           handleDeleteAnnotation(annotation.id);
                         }}
                         className="w-2/3 px-2 py-1.5 bg-red-600 hover:bg-red-700 rounded text-xs font-semibold transition"
-                        title="Delete"
+                        title="Remove from Recents (file remains in Downloads)"
                       >
-                        🗑 Delete
+                        ✕ Remove
                       </button>
                     </div>
                   </div>
@@ -318,7 +331,7 @@ export function App() {
             }}
             className="text-sm text-blue-400 hover:text-blue-300 mt-2"
           >
-            ← Back to Gallery
+            ← Back to Recents
           </button>
         </div>
 
@@ -344,8 +357,9 @@ export function App() {
               setSelectedAnnotation(null);
             }}
             className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold text-sm"
+            title="Remove from Recents (file remains in Downloads)"
           >
-            Delete
+            Remove from Recents
           </button>
         </div>
       </div>
@@ -380,7 +394,7 @@ export function App() {
           onClick={() => setView('gallery')}
           className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold transition"
         >
-          🖼️ View Gallery ({annotations.length})
+          🖼️ View Recents ({annotations.length})
         </button>
 
         <div className="pt-4 border-t border-slate-700 space-y-2 text-xs text-slate-400">

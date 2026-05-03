@@ -32,7 +32,7 @@ function AnnotateApp() {
       setSaved(true);
 
       // Show success message and close
-      alert("Screenshot saved to gallery!");
+      alert("Screenshot saved to Downloads!");
       window.close();
     } catch (error) {
       console.error("Failed to save annotation:", error);

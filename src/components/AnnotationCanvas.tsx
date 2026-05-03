@@ -376,6 +376,11 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
         ctx.fillRect(left, 0, width, top);
         ctx.fillRect(left, top + height, width, canvas.height - top - height);
 
+        // Redraw annotations on top of everything
+        drawings.forEach((drawing) => {
+          drawItem(ctx, drawing);
+        });
+
         // Draw crop border
         ctx.strokeStyle = '#00FF00';
         ctx.lineWidth = 2;
@@ -748,9 +753,16 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             title={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.type === 'text' ? "Font size" : "Border width") : "Size for new annotations"}
           />
           {selectedAnnotationId && (
-            <div className="px-3 py-2 bg-green-600 rounded text-white text-sm flex items-center">
+            <button
+              onClick={() => {
+                setSelectedAnnotationId(null);
+                redrawWithDrawings(drawings);
+              }}
+              className="px-3 py-2 bg-green-600 rounded text-white text-sm flex items-center hover:bg-green-700 cursor-pointer"
+              title="Click to deselect"
+            >
               ✓ Selected
-            </div>
+            </button>
           )}
           <button onClick={handleUndo} className="px-3 py-2 bg-gray-700 rounded">
             Undo

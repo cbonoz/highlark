@@ -133,8 +133,17 @@ function AnnotateApp() {
       console.log('[Annotate] Annotation saved successfully!');
       setSaved(true);
 
+      // Download to downloads folder
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const a = document.createElement('a');
+      a.href = annotatedImageDataUrl;
+      a.download = `highlark-${timestamp}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
       // Show success message and close
-      alert("Screenshot saved to gallery!");
+      alert("Screenshot saved to Downloads!");
       window.close();
     } catch (error) {
       console.error("[Annotate] Failed to save annotation:", error);

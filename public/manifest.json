@@ -21,7 +21,8 @@
     "activeTab",
     "scripting",
     "storage",
-    "windows"
+    "windows",
+    "downloads"
   ],
   "host_permissions": [
     "<all_urls>"
