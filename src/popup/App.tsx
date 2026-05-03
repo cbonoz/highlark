@@ -156,8 +156,13 @@ export function App() {
       // Close the popup
       window.close();
     } catch (error) {
-      console.error('[Popup] Failed to open image:', error);
       setLoading(false);
+      // Silently ignore file selection cancellations
+      if (error instanceof Error && error.message === 'File selection cancelled') {
+        console.log('[Popup] File selection cancelled by user');
+        return;
+      }
+      console.error('[Popup] Failed to open image:', error);
       alert('Failed to open image file: ' + (error instanceof Error ? error.message : String(error)));
     }
   };

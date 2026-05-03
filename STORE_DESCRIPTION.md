@@ -56,11 +56,23 @@ screenshot, annotation, markup, capture, tools, privacy, open-source
 ## Screenshots
 [See SCREENSHOTS_GUIDE.md for details]
 
-1. Screenshot showing the annotation toolbar and sample annotated image
-2. Gallery view with multiple saved screenshots
-3. Crop tool in action
-4. Blur/redaction feature highlighting sensitive areas
-5. Text annotation with color customization
+All screenshots are 1280x800 pixels (Chrome Web Store standard)
+
+### Screenshot 1: Annotate with Precision
+![annotate.png](images/annotate.png)
+Full annotation interface showing multiple tools in action - text, arrows, shapes, and more on a professional screenshot.
+
+### Screenshot 2: Your Annotations, Organized
+![home.png](images/home.png)
+Quick access to recent screenshots from the convenient popup interface.
+
+### Screenshot 3: Recents Gallery
+![recents.png](images/recents.png)
+View all your saved annotations in one organized gallery with easy access to your work.
+
+### Screenshot 4: Seamless Saving
+![saving.png](images/saving.png)
+Export and download your annotated screenshots as PNG or generate shareable links.
 
 ## Promotional Tile (Optional)
 The lightweight, privacy-first screenshot annotator.
