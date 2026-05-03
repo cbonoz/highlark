@@ -19,24 +19,14 @@
   },
   "permissions": [
     "activeTab",
-    "scripting",
     "storage",
     "windows",
     "downloads"
-  ],
-  "host_permissions": [
-    "<all_urls>"
   ],
   "web_accessible_resources": [
     {
       "resources": ["annotate/index.html"],
       "matches": ["<all_urls>"]
-    }
-  ],
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["contentScript.js"]
     }
   ]
 }

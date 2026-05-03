@@ -6,7 +6,7 @@ import manifest from "../public/manifest.json";
 const outdir = "./build";
 
 const {
-  content_scripts,
+  content_scripts = [],
   background: { service_worker },
 } = manifest;
 
