@@ -51,7 +51,28 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   };
 
   const handleUndo = () => {
-    if (historyIndexRef.current > 0) {
+    // First check if there's image history to undo
+    if (imageHistoryIndexRef.current > 0) {
+      imageHistoryIndexRef.current--;
+      const previousImage = imageHistoryRef.current[imageHistoryIndexRef.current];
+      setCurrentImageDataUrl(previousImage);
+
+      // Redraw canvas with the previous image
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            redrawCanvas(ctx, img, drawings);
+          }
+        }
+      };
+      img.src = previousImage;
+    } else if (historyIndexRef.current > 0) {
+      // Otherwise undo annotation
       historyIndexRef.current--;
       const previousState = historyRef.current[historyIndexRef.current];
       setDrawings([...previousState]);
@@ -60,7 +81,28 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   };
 
   const handleRedo = () => {
-    if (historyIndexRef.current < historyRef.current.length - 1) {
+    // First check if there's image history to redo
+    if (imageHistoryIndexRef.current < imageHistoryRef.current.length - 1) {
+      imageHistoryIndexRef.current++;
+      const nextImage = imageHistoryRef.current[imageHistoryIndexRef.current];
+      setCurrentImageDataUrl(nextImage);
+
+      // Redraw canvas with the next image
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            redrawCanvas(ctx, img, drawings);
+          }
+        }
+      };
+      img.src = nextImage;
+    } else if (historyIndexRef.current < historyRef.current.length - 1) {
+      // Otherwise redo annotation
       historyIndexRef.current++;
       const nextState = historyRef.current[historyIndexRef.current];
       setDrawings([...nextState]);
@@ -117,6 +159,68 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     console.log('[Canvas] Setting image src to:', imageDataUrl.substring(0, 80));
     img.src = imageDataUrl;
   }, [imageDataUrl]);
+
+  // Redraw blur preview when invert toggle is clicked
+  useEffect(() => {
+    if (currentTool === 'blur' && isBlurring && blurArea !== null) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const img = new Image();
+      img.onload = () => {
+        redrawCanvas(ctx, img, drawings);
+
+        if (invertBlur) {
+          // Blur everything except the selected area
+          ctx.filter = 'blur(15px)';
+          ctx.drawImage(img, 0, 0);
+          ctx.filter = 'none';
+
+          // Draw unblurred area on top
+          ctx.drawImage(
+            img,
+            blurArea.x,
+            blurArea.y,
+            blurArea.width,
+            blurArea.height,
+            blurArea.x,
+            blurArea.y,
+            blurArea.width,
+            blurArea.height
+          );
+        } else {
+          // Apply blur effect to the selected area for preview
+          ctx.filter = 'blur(15px)';
+          ctx.drawImage(
+            img,
+            blurArea.x,
+            blurArea.y,
+            blurArea.width,
+            blurArea.height,
+            blurArea.x,
+            blurArea.y,
+            blurArea.width,
+            blurArea.height
+          );
+          ctx.filter = 'none';
+        }
+
+        // Redraw annotations on top
+        drawings.forEach((drawing) => {
+          drawItem(ctx, drawing);
+        });
+
+        // Draw blur border in blue
+        ctx.strokeStyle = '#3B82F6';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(blurArea.x, blurArea.y, blurArea.width, blurArea.height);
+      };
+      img.src = currentImageDataUrl;
+    }
+  }, [invertBlur, currentTool, isBlurring, blurArea]);
 
   const redrawCanvas = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, drawnItems: Drawing[], selectedId?: string | null) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -424,20 +528,40 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       img.onload = () => {
         redrawCanvas(ctx, img, drawings);
 
-        // Apply blur effect to the selected area for preview
-        ctx.filter = 'blur(15px)';
-        ctx.drawImage(
-          img,
-          left,
-          top,
-          width,
-          height,
-          left,
-          top,
-          width,
-          height
-        );
-        ctx.filter = 'none';
+        if (invertBlur) {
+          // Blur everything except the selected area
+          ctx.filter = 'blur(15px)';
+          ctx.drawImage(img, 0, 0);
+          ctx.filter = 'none';
+
+          // Draw unblurred area on top
+          ctx.drawImage(
+            img,
+            left,
+            top,
+            width,
+            height,
+            left,
+            top,
+            width,
+            height
+          );
+        } else {
+          // Apply blur effect to the selected area for preview
+          ctx.filter = 'blur(15px)';
+          ctx.drawImage(
+            img,
+            left,
+            top,
+            width,
+            height,
+            left,
+            top,
+            width,
+            height
+          );
+          ctx.filter = 'none';
+        }
 
         // Redraw annotations on top
         drawings.forEach((drawing) => {
@@ -696,6 +820,9 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Save current image to history before applying blur
+    saveImageToHistory(currentImageDataUrl);
+
     const img = new Image();
     img.onload = () => {
       const tempCanvas = document.createElement('canvas');
@@ -744,6 +871,9 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       }
 
       const blurredDataUrl = tempCanvas.toDataURL('image/png');
+
+      // Save blurred image to history
+      saveImageToHistory(blurredDataUrl);
 
       // Reset blur mode and update image
       setIsBlurring(false);
