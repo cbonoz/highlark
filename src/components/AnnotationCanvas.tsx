@@ -31,6 +31,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const [cropArea, setCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [isBlurring, setIsBlurring] = useState(false);
   const [blurArea, setBlurArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [invertBlur, setInvertBlur] = useState(false);
   const [currentImageDataUrl, setCurrentImageDataUrl] = useState(imageDataUrl);
   const [textPageX, setTextPageX] = useState(0);
   const [textPageY, setTextPageY] = useState(0);
@@ -707,26 +708,47 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       // Draw the original image
       tempCtx.drawImage(img, 0, 0);
 
-      // Apply blur using canvas filter
-      tempCtx.filter = 'blur(20px)';
-      tempCtx.drawImage(
-        img,
-        blurArea.x,
-        blurArea.y,
-        blurArea.width,
-        blurArea.height,
-        blurArea.x,
-        blurArea.y,
-        blurArea.width,
-        blurArea.height
-      );
-      tempCtx.filter = 'none';
+      if (invertBlur) {
+        // Blur everything except the selected area
+        tempCtx.filter = 'blur(20px)';
+        tempCtx.drawImage(img, 0, 0);
+        tempCtx.filter = 'none';
+
+        // Draw unblurred area on top
+        tempCtx.drawImage(
+          img,
+          blurArea.x,
+          blurArea.y,
+          blurArea.width,
+          blurArea.height,
+          blurArea.x,
+          blurArea.y,
+          blurArea.width,
+          blurArea.height
+        );
+      } else {
+        // Blur only the selected area
+        tempCtx.filter = 'blur(20px)';
+        tempCtx.drawImage(
+          img,
+          blurArea.x,
+          blurArea.y,
+          blurArea.width,
+          blurArea.height,
+          blurArea.x,
+          blurArea.y,
+          blurArea.width,
+          blurArea.height
+        );
+        tempCtx.filter = 'none';
+      }
 
       const blurredDataUrl = tempCanvas.toDataURL('image/png');
 
       // Reset blur mode and update image
       setIsBlurring(false);
       setBlurArea(null);
+      setInvertBlur(false);
       setCurrentImageDataUrl(blurredDataUrl);
 
       // Redraw canvas with new image
@@ -747,6 +769,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const cancelBlur = () => {
     setIsBlurring(false);
     setBlurArea(null);
+    setInvertBlur(false);
     redrawWithDrawings(drawings);
   };
 
@@ -948,10 +971,18 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       )}
 
       {blurArea && currentTool === 'blur' && (
-        <div className="absolute z-50 bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 p-4 rounded shadow-lg flex gap-2">
+        <div className="absolute z-50 bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 p-4 rounded shadow-lg flex gap-2 items-center">
           <div className="text-white text-sm mr-4">
             {blurArea.width} x {blurArea.height}
           </div>
+          <button
+            onClick={() => setInvertBlur(!invertBlur)}
+            className={`px-3 py-2 rounded text-sm ${
+              invertBlur ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 hover:bg-gray-700'
+            }`}
+          >
+            {invertBlur ? '⟲ Invert ON' : 'Invert'}
+          </button>
           <button onClick={applyBlur} className="px-4 py-2 bg-green-600 rounded hover:bg-green-700">
             Apply Blur
           </button>
