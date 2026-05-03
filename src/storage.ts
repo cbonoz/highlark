@@ -18,6 +18,7 @@ export interface Drawing {
   content?: string; // for text
   color?: string;
   fontSize?: number;
+  lineWidth?: number;
   rotation?: number;
   imageData?: string; // base64 for image type
 }
@@ -30,15 +31,13 @@ const DB_VERSION = 3;
 
 let db: IDBDatabase | null = null;
 
-export async function initDB(): Promise<IDBDatabase> {
+// Open fresh database connection (needed for cross-window contexts)
+function getDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      db = request.result;
-      resolve(db);
-    };
+    request.onsuccess = () => resolve(request.result);
 
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result;
@@ -59,23 +58,30 @@ export async function initDB(): Promise<IDBDatabase> {
 }
 
 export async function saveAnnotation(annotation: Annotation): Promise<string> {
-  if (!db) await initDB();
+  const database = await getDatabase();
+  console.log('[Storage] Saving annotation:', { id: annotation.id, title: annotation.title });
 
   return new Promise((resolve, reject) => {
-    const transaction = db!.transaction([STORE_NAME], 'readwrite');
+    const transaction = database.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.put(annotation);
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(annotation.id);
+    request.onerror = () => {
+      console.error('[Storage] Save failed:', request.error);
+      reject(request.error);
+    };
+    request.onsuccess = () => {
+      console.log('[Storage] Annotation saved successfully');
+      resolve(annotation.id);
+    };
   });
 }
 
 export async function getAnnotation(id: string): Promise<Annotation | null> {
-  if (!db) await initDB();
+  const database = await getDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db!.transaction([STORE_NAME], 'readonly');
+    const transaction = database.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.get(id);
 
@@ -85,10 +91,10 @@ export async function getAnnotation(id: string): Promise<Annotation | null> {
 }
 
 export async function getAnnotationByShareId(shareId: string): Promise<Annotation | null> {
-  if (!db) await initDB();
+  const database = await getDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db!.transaction([STORE_NAME], 'readonly');
+    const transaction = database.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
     const index = store.index('shareId');
     const request = index.get(shareId);
@@ -99,10 +105,10 @@ export async function getAnnotationByShareId(shareId: string): Promise<Annotatio
 }
 
 export async function getAllAnnotations(): Promise<Annotation[]> {
-  if (!db) await initDB();
+  const database = await getDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db!.transaction([STORE_NAME], 'readonly');
+    const transaction = database.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.getAll();
 
@@ -115,10 +121,10 @@ export async function getAllAnnotations(): Promise<Annotation[]> {
 }
 
 export async function deleteAnnotation(id: string): Promise<void> {
-  if (!db) await initDB();
+  const database = await getDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db!.transaction([STORE_NAME], 'readwrite');
+    const transaction = database.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.delete(id);
 
@@ -128,10 +134,10 @@ export async function deleteAnnotation(id: string): Promise<void> {
 }
 
 export async function updateAnnotation(annotation: Annotation): Promise<void> {
-  if (!db) await initDB();
+  const database = await getDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db!.transaction([STORE_NAME], 'readwrite');
+    const transaction = database.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.put(annotation);
 
@@ -141,7 +147,7 @@ export async function updateAnnotation(annotation: Annotation): Promise<void> {
 }
 
 export async function createShare(annotationId: string): Promise<string> {
-  if (!db) await initDB();
+  const database = await getDatabase();
 
   const shareId = generateShareId();
   const shareData = {
@@ -162,7 +168,7 @@ export async function createShare(annotationId: string): Promise<string> {
       annotation.shareId = shareId;
       await updateAnnotation(annotation);
 
-      const transaction = db!.transaction([SHARE_STORE_NAME], 'readwrite');
+      const transaction = database.transaction([SHARE_STORE_NAME], 'readwrite');
       const store = transaction.objectStore(SHARE_STORE_NAME);
       const request = store.put(shareData);
 

@@ -118,6 +118,7 @@ function AnnotateApp() {
 
   const handleSave = async (annotatedImageDataUrl: string, drawings: Drawing[]) => {
     try {
+      console.log('[Annotate] Save clicked, creating annotation object');
       const annotation: Annotation = {
         id: generateId(),
         timestamp: Date.now(),
@@ -127,15 +128,17 @@ function AnnotateApp() {
         title: `Screenshot ${new Date().toLocaleString()}`,
       };
 
+      console.log('[Annotate] Saving annotation to database...');
       await saveAnnotation(annotation);
+      console.log('[Annotate] Annotation saved successfully!');
       setSaved(true);
 
       // Show success message and close
       alert("Screenshot saved to gallery!");
       window.close();
     } catch (error) {
-      console.error("Failed to save annotation:", error);
-      alert("Failed to save annotation");
+      console.error("[Annotate] Failed to save annotation:", error);
+      alert("Failed to save annotation: " + (error instanceof Error ? error.message : String(error)));
     }
   };
 

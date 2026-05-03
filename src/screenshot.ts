@@ -118,10 +118,18 @@ export function loadImageFromFile(): Promise<string> {
     input.type = 'file';
     input.accept = 'image/*';
 
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (!settled) {
+        settled = true;
+        fn();
+      }
+    };
+
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) {
-        reject(new Error('No file selected'));
+        settle(() => reject(new Error('No file selected')));
         return;
       }
 
@@ -129,16 +137,31 @@ export function loadImageFromFile(): Promise<string> {
         const reader = new FileReader();
         reader.onload = (event) => {
           const dataUrl = event.target?.result as string;
-          resolve(dataUrl);
+          settle(() => resolve(dataUrl));
         };
-        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.onerror = () => settle(() => reject(new Error('Failed to read file')));
         reader.readAsDataURL(file);
       } catch (error) {
-        reject(error);
+        settle(() => reject(error));
       }
     };
 
-    input.onerror = () => reject(new Error('Failed to open file picker'));
+    input.onerror = () => settle(() => reject(new Error('Failed to open file picker')));
+    
+    // Handle case where user cancels file picker
+    const handleCancel = () => {
+      settle(() => reject(new Error('File selection cancelled')));
+    };
+    input.oncancel = handleCancel;
+    
+    // Fallback: detect if dialog was closed without selection via focus event
+    const handleFocus = () => {
+      setTimeout(() => {
+        settle(() => reject(new Error('File selection cancelled')));
+      }, 300);
+    };
+    window.addEventListener('focus', handleFocus, { once: true });
+
     input.click();
   });
 }

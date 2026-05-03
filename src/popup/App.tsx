@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { captureVisibleTab, downloadImage, loadImageFromFile } from '../screenshot';
-import { saveAnnotation, getAllAnnotations, deleteAnnotation, Annotation, generateId, createShare, getShareUrl } from '../storage';
+import { saveAnnotation, getAllAnnotations, deleteAnnotation, Annotation, generateId } from '../storage';
 import { AnnotationCanvas } from '../components/AnnotationCanvas';
 import { Drawing } from '../storage';
 
@@ -10,14 +10,34 @@ export function App() {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
   const [loading, setLoading] = useState(false);
-  const [shareUrl, setShareUrl] = useState<string>('');
-  const [showShareMessage, setShowShareMessage] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Load annotations on mount
+    loadAnnotations();
+  }, []);
 
   useEffect(() => {
     if (view === 'gallery') {
       loadAnnotations();
     }
   }, [view]);
+
+  useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if ((view === 'editor' || view === 'gallery') && e.key === 'Delete') {
+        e.preventDefault();
+        if (view === 'editor' && selectedAnnotation) {
+          handleDeleteAnnotation(selectedAnnotation.id);
+          setView('gallery');
+          setSelectedAnnotation(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [view, selectedAnnotation]);
 
   const loadAnnotations = async () => {
     try {
@@ -178,29 +198,7 @@ export function App() {
     downloadImage(annotation.annotatedImageData, `highlark-${timestamp}.png`);
   };
 
-  const handleShareAnnotation = async (annotation: Annotation) => {
-    try {
-      let url = annotation.shareId ? getShareUrl(annotation.shareId) : '';
 
-      if (!url) {
-        const shareId = await createShare(annotation.id);
-        url = getShareUrl(shareId);
-      }
-
-      setShareUrl(url);
-      setShowShareMessage(true);
-
-      // Copy to clipboard
-      navigator.clipboard.writeText(url).catch(() => {
-        console.log('Failed to copy to clipboard');
-      });
-
-      setTimeout(() => setShowShareMessage(false), 3000);
-    } catch (error) {
-      console.error('Failed to create share:', error);
-      alert('Failed to create share link');
-    }
-  };
 
   if (view === 'canvas') {
     return (
@@ -216,79 +214,94 @@ export function App() {
   }
 
   if (view === 'gallery') {
+    const sortedAnnotations = [...annotations].sort((a, b) => b.timestamp - a.timestamp);
+    
     return (
-      <div className="w-96 max-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+      <div className="w-full max-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white" style={{ width: '600px', height: '700px' }}>
         <div className="p-4 border-b border-slate-700">
-          <h2 className="text-xl font-bold">Gallery</h2>
-          <button
-            onClick={() => setView('home')}
-            className="text-sm text-blue-400 hover:text-blue-300 mt-2"
-          >
-            ← Back
-          </button>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Gallery</h2>
+              <p className="text-sm text-slate-400 mt-1">{annotations.length} annotation{annotations.length !== 1 ? 's' : ''}</p>
+            </div>
+            <button
+              onClick={() => setView('home')}
+              className="text-blue-400 hover:text-blue-300 font-semibold"
+            >
+              ← Back
+            </button>
+          </div>
         </div>
 
-        {showShareMessage && (
-          <div className="bg-green-600 text-white px-4 py-2 text-sm">
-            ✓ Share link copied to clipboard!
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4">
           {annotations.length === 0 ? (
             <p className="text-slate-400 text-center py-8">No annotations yet</p>
           ) : (
-            annotations.map((annotation) => (
-              <div
-                key={annotation.id}
-                className="bg-slate-700 rounded-lg p-3 hover:bg-slate-600 transition cursor-pointer"
-                onClick={() => {
-                  setSelectedAnnotation(annotation);
-                  setView('editor');
-                }}
-              >
-                <img
-                  src={annotation.annotatedImageData}
-                  alt={annotation.title}
-                  className="w-full h-24 object-cover rounded mb-2"
-                />
-                <p className="text-sm font-semibold truncate">{annotation.title}</p>
-                <p className="text-xs text-slate-400">
-                  {new Date(annotation.timestamp).toLocaleString()}
-                </p>
-                <div className="flex gap-2 mt-2 text-xs">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownloadAnnotation(annotation);
-                    }}
-                    className="flex-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded"
-                  >
-                    Download
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleShareAnnotation(annotation);
-                    }}
-                    className="flex-1 px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded"
-                  >
-                    Share
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteAnnotation(annotation.id);
-                    }}
-                    className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 rounded"
-                  >
-                    Delete
-                  </button>
+            <div className="grid grid-cols-1 gap-4">
+              {sortedAnnotations.map((annotation) => (
+                <div
+                  key={annotation.id}
+                  className="relative group bg-slate-700 rounded-lg overflow-hidden hover:bg-slate-600 transition cursor-pointer"
+                  onMouseEnter={() => setHoveredId(annotation.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => {
+                    setSelectedAnnotation(annotation);
+                    setView('editor');
+                  }}
+                >
+                  <div className="relative">
+                    <img
+                      src={annotation.annotatedImageData}
+                      alt={annotation.title}
+                      className="w-full h-64 object-cover"
+                    />
+                    {/* Hover overlay with buttons */}
+                    <div
+                      className={`absolute inset-0 bg-black bg-opacity-70 flex flex-col justify-center items-center gap-2 transition-opacity ${
+                        hoveredId === annotation.id ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadAnnotation(annotation);
+                        }}
+                        className="w-2/3 px-2 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold transition"
+                        title="Download"
+                      >
+                        ⬇ Download
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteAnnotation(annotation.id);
+                        }}
+                        className="w-2/3 px-2 py-1.5 bg-red-600 hover:bg-red-700 rounded text-xs font-semibold transition"
+                        title="Delete"
+                      >
+                        🗑 Delete
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-2 bg-slate-700">
+                    <p className="text-xs font-semibold truncate">{annotation.title}</p>
+                    <p className="text-xs text-slate-400 truncate">
+                      {new Date(annotation.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
+
+        {annotations.length > 0 && (
+          <div className="px-3 py-2 text-center border-t border-slate-700">
+            <p className="text-xs text-slate-400">💡 Press <span className="font-semibold">Delete</span> to remove selected annotation</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -309,12 +322,6 @@ export function App() {
           </button>
         </div>
 
-        {showShareMessage && (
-          <div className="bg-green-600 text-white px-4 py-2 text-sm">
-            ✓ Share link copied to clipboard!
-          </div>
-        )}
-
         <div className="flex-1 overflow-auto">
           <img
             src={selectedAnnotation.annotatedImageData}
@@ -324,20 +331,12 @@ export function App() {
         </div>
 
         <div className="p-4 border-t border-slate-700 flex gap-2 flex-col">
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleDownloadAnnotation(selectedAnnotation)}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold text-sm"
-            >
-              Download
-            </button>
-            <button
-              onClick={() => handleShareAnnotation(selectedAnnotation)}
-              className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold text-sm"
-            >
-              Share
-            </button>
-          </div>
+          <button
+            onClick={() => handleDownloadAnnotation(selectedAnnotation)}
+            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold text-sm"
+          >
+            Download
+          </button>
           <button
             onClick={() => {
               handleDeleteAnnotation(selectedAnnotation.id);

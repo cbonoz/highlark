@@ -7,7 +7,7 @@ export interface CanvasProps {
   onCancel: () => void;
 }
 
-type DrawingTool = 'text' | 'arrow' | 'rect' | 'circle' | 'line' | 'eraser' | 'pointer';
+type DrawingTool = 'text' | 'arrow' | 'rect' | 'circle' | 'line' | 'eraser' | 'pointer' | 'crop';
 
 export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -15,6 +15,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const [currentTool, setCurrentTool] = useState<DrawingTool>('arrow');
   const [color, setColor] = useState('#FF0000');
   const [fontSize, setFontSize] = useState(16);
+  const [lineWidth, setLineWidth] = useState(2);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
@@ -22,6 +23,16 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const [showTextInput, setShowTextInput] = useState(false);
   const [textX, setTextX] = useState(0);
   const [textY, setTextY] = useState(0);
+  const [draggingAnnotationId, setDraggingAnnotationId] = useState<string | null>(null);
+  const [dragOffsetX, setDragOffsetX] = useState(0);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropArea, setCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [currentImageDataUrl, setCurrentImageDataUrl] = useState(imageDataUrl);
+  const [textPageX, setTextPageX] = useState(0);
+  const [textPageY, setTextPageY] = useState(0);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
 
   // Load image on mount
   useEffect(() => {
@@ -34,6 +45,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       return;
     }
     
+    setCurrentImageDataUrl(imageDataUrl);
     const canvas = canvasRef.current;
     if (!canvas) {
       console.error('[Canvas] Canvas ref not available');
@@ -51,6 +63,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       console.log('[Canvas] Image loaded successfully, dimensions:', img.width, 'x', img.height);
       canvas.width = img.width;
       canvas.height = img.height;
+      setCanvasDimensions({ width: img.width, height: img.height });
       ctx.drawImage(img, 0, 0);
       redrawCanvas(ctx, img, []);
       console.log('[Canvas] Image drawn to canvas');
@@ -65,18 +78,19 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     img.src = imageDataUrl;
   }, [imageDataUrl]);
 
-  const redrawCanvas = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, drawnItems: Drawing[]) => {
+  const redrawCanvas = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, drawnItems: Drawing[], selectedId?: string | null) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.drawImage(img, 0, 0);
 
     drawnItems.forEach((drawing) => {
-      drawItem(ctx, drawing);
+      drawItem(ctx, drawing, drawing.id === selectedId);
     });
   };
 
-  const drawItem = (ctx: CanvasRenderingContext2D, item: Drawing) => {
+  const drawItem = (ctx: CanvasRenderingContext2D, item: Drawing, isSelected: boolean = false) => {
     ctx.strokeStyle = item.color || '#FF0000';
     ctx.fillStyle = item.color || '#FF0000';
+    ctx.lineWidth = item.lineWidth || 2;
 
     switch (item.type) {
       case 'text':
@@ -102,10 +116,45 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
         ctx.stroke();
         break;
     }
+
+    // Draw selection highlight
+    if (isSelected) {
+      ctx.strokeStyle = '#00FF00';
+      ctx.lineWidth = 3;
+      const padding = 4;
+
+      switch (item.type) {
+        case 'text':
+          const textWidth = (item.content || '').length * (item.fontSize || 16) * 0.6;
+          const textHeight = item.fontSize || 16;
+          ctx.strokeRect(item.x - padding, item.y - textHeight - padding, textWidth + padding * 2, textHeight + padding * 2);
+          break;
+        case 'rect':
+          ctx.strokeRect(item.x - padding, item.y - padding, item.width + padding * 2, item.height + padding * 2);
+          break;
+        case 'circle':
+          const centerX = item.x + item.width / 2;
+          const centerY = item.y + item.height / 2;
+          const radius = item.width / 2;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius + padding, 0, Math.PI * 2);
+          ctx.stroke();
+          break;
+        case 'arrow':
+        case 'line':
+          ctx.strokeRect(
+            Math.min(item.x, item.x + item.width) - padding,
+            Math.min(item.y, item.y + item.height) - padding,
+            Math.abs(item.width) + padding * 2,
+            Math.abs(item.height) + padding * 2
+          );
+          break;
+      }
+    }
   };
 
   const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number) => {
-    const headlen = 15;
+    const headlen = Math.max(8, ctx.lineWidth * 4);
     const angle = Math.atan2(toY - fromY, toX - fromX);
 
     ctx.beginPath();
@@ -113,12 +162,76 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     ctx.lineTo(toX, toY);
     ctx.stroke();
 
+    // Draw arrow head with fill for better appearance
     ctx.beginPath();
     ctx.moveTo(toX, toY);
     ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headlen * 0.6 * Math.cos(angle), toY - headlen * 0.6 * Math.sin(angle));
     ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // Hit detection: check if a point is on an annotation
+  const getAnnotationAtPoint = (x: number, y: number): Drawing | null => {
+    // Check in reverse order so topmost annotations are selected first
+    for (let i = drawings.length - 1; i >= 0; i--) {
+      const drawing = drawings[i];
+      const padding = 8; // Hit box padding for easier selection
+
+      switch (drawing.type) {
+        case 'text':
+          // For text, use rough bounding box
+          const textWidth = (drawing.content || '').length * (drawing.fontSize || 16) * 0.6;
+          const textHeight = drawing.fontSize || 16;
+          if (
+            x >= drawing.x - padding &&
+            x <= drawing.x + textWidth + padding &&
+            y >= drawing.y - textHeight + padding &&
+            y <= drawing.y + padding
+          ) {
+            return drawing;
+          }
+          break;
+
+        case 'rect':
+          if (
+            x >= drawing.x - padding &&
+            x <= drawing.x + drawing.width + padding &&
+            y >= drawing.y - padding &&
+            y <= drawing.y + drawing.height + padding
+          ) {
+            return drawing;
+          }
+          break;
+
+        case 'circle':
+          const centerX = drawing.x + drawing.width / 2;
+          const centerY = drawing.y + drawing.height / 2;
+          const radius = drawing.width / 2;
+          const distance = Math.hypot(x - centerX, y - centerY);
+          if (distance <= radius + padding) {
+            return drawing;
+          }
+          break;
+
+        case 'arrow':
+        case 'line':
+          // Check if point is near the line
+          const x1 = drawing.x;
+          const y1 = drawing.y;
+          const x2 = drawing.x + drawing.width;
+          const y2 = drawing.y + drawing.height;
+          const lineDistance = Math.abs(
+            (y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1
+          ) / Math.hypot(y2 - y1, x2 - x1);
+          if (lineDistance <= padding + 3) {
+            return drawing;
+          }
+          break;
+      }
+    }
+    return null;
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -126,13 +239,46 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    // Handle crop tool
+    if (currentTool === 'crop') {
+      setIsCropping(true);
+      setStartX(x);
+      setStartY(y);
+      setCropArea({ x: Math.floor(x), y: Math.floor(y), width: 0, height: 0 });
+      return;
+    }
+
+    // Handle pointer tool - check for existing annotations to drag
+    if (currentTool === 'pointer') {
+      const annotation = getAnnotationAtPoint(x, y);
+      if (annotation) {
+        setDraggingAnnotationId(annotation.id);
+        setSelectedAnnotationId(annotation.id);
+        setDragOffsetX(x - annotation.x);
+        setDragOffsetY(y - annotation.y);
+        redrawWithDrawings(drawings);
+        return;
+      }
+      // Click on empty space deselects
+      setSelectedAnnotationId(null);
+      redrawWithDrawings(drawings);
+      return;
+    }
 
     if (currentTool === 'text') {
       setTextX(x);
       setTextY(y);
+      // Calculate page-relative coordinates for proper positioning
+      setTextPageX(e.clientX);
+      setTextPageY(e.clientY);
       setShowTextInput(true);
+      // Redraw to ensure clean state while text input is open
+      redrawWithDrawings(drawings);
       return;
     }
 
@@ -142,24 +288,102 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+    // Don't render if text input is open
+    if (showTextInput) {
+      return;
+    }
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    // Handle crop mode
+    if (currentTool === 'crop' && isCropping && cropArea !== null) {
+      const width = Math.abs(x - startX);
+      const height = Math.abs(y - startY);
+      const left = Math.min(x, startX);
+      const top = Math.min(y, startY);
+      
+      setCropArea({
+        x: Math.floor(left),
+        y: Math.floor(top),
+        width: Math.floor(width),
+        height: Math.floor(height),
+      });
+
+      // Visualize crop area
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const img = new Image();
+      img.onload = () => {
+        redrawCanvas(ctx, img, drawings);
+
+        // Draw semi-transparent overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Clear the crop area (show unblurred)
+        ctx.clearRect(left, top, width, height);
+
+        // Draw the uncropped image in the crop area
+        ctx.drawImage(img, 0, 0);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, left, canvas.height);
+        ctx.fillRect(left + width, 0, canvas.width - left - width, canvas.height);
+        ctx.fillRect(left, 0, width, top);
+        ctx.fillRect(left, top + height, width, canvas.height - top - height);
+
+        // Draw crop border
+        ctx.strokeStyle = '#00FF00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(left, top, width, height);
+      };
+      img.src = currentImageDataUrl;
+      return;
+    }
+
+    // Update cursor based on tool and hover state
+    if (currentTool === 'pointer') {
+      const annotation = getAnnotationAtPoint(x, y);
+      canvas.style.cursor = annotation ? 'grab' : 'default';
+
+      // Handle dragging
+      if (draggingAnnotationId) {
+        canvas.style.cursor = 'grabbing';
+        const updatedDrawings = drawings.map(drawing =>
+          drawing.id === draggingAnnotationId
+            ? { ...drawing, x: x - dragOffsetX, y: y - dragOffsetY }
+            : drawing
+        );
+        setDrawings(updatedDrawings);
+        redrawWithDrawings(updatedDrawings);
+        return;
+      }
+    } else if (currentTool === 'text') {
+      canvas.style.cursor = 'text';
+    } else if (currentTool === 'crop') {
+      canvas.style.cursor = 'crosshair';
+    } else {
+      canvas.style.cursor = 'crosshair';
+    }
+
+    if (!isDrawing) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
 
     const img = new Image();
     img.onload = () => {
       redrawCanvas(ctx, img, drawings);
 
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = lineWidth;
 
       switch (currentTool) {
         case 'arrow':
@@ -181,18 +405,35 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
           break;
       }
     };
-    img.src = imageDataUrl;
+    img.src = currentImageDataUrl;
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Handle crop mode
+    if (currentTool === 'crop') {
+      setIsCropping(false);
+      return;
+    }
+
+    // Handle pointer tool drag end
+    if (currentTool === 'pointer') {
+      if (draggingAnnotationId) {
+        setDraggingAnnotationId(null);
+        redrawWithDrawings(drawings);
+      }
+      return;
+    }
+
     if (!isDrawing) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     const newDrawing: Drawing = {
       id: `${Date.now()}-${Math.random()}`,
@@ -202,6 +443,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       width: x - startX,
       height: y - startY,
       color,
+      lineWidth: currentTool !== 'text' ? lineWidth : undefined,
     };
 
     const updatedDrawings = [...drawings, newDrawing];
@@ -243,9 +485,9 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
     const img = new Image();
     img.onload = () => {
-      redrawCanvas(ctx, img, drawnItems);
+      redrawCanvas(ctx, img, drawnItems, selectedAnnotationId);
     };
-    img.src = imageDataUrl;
+    img.src = currentImageDataUrl;
   };
 
   const handleSave = () => {
@@ -262,55 +504,201 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     redrawWithDrawings(updatedDrawings);
   };
 
+  const applyCrop = () => {
+    if (!cropArea) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const img = new Image();
+    img.onload = () => {
+      // Create a new canvas for the cropped image
+      const croppedCanvas = document.createElement('canvas');
+      croppedCanvas.width = cropArea.width;
+      croppedCanvas.height = cropArea.height;
+
+      const ctx = croppedCanvas.getContext('2d');
+      if (!ctx) return;
+
+      // Draw the cropped portion
+      ctx.drawImage(
+        img,
+        cropArea.x,
+        cropArea.y,
+        cropArea.width,
+        cropArea.height,
+        0,
+        0,
+        cropArea.width,
+        cropArea.height
+      );
+
+      const croppedDataUrl = croppedCanvas.toDataURL('image/png');
+      
+      // Reset crop mode and clear drawings
+      setIsCropping(false);
+      setCropArea(null);
+      setDrawings([]);
+      
+      // Update the image and redraw the canvas
+      const newImg = new Image();
+      newImg.onload = () => {
+        canvas.width = newImg.width;
+        canvas.height = newImg.height;
+        setCanvasDimensions({ width: newImg.width, height: newImg.height });
+        const canvasCtx = canvas.getContext('2d');
+        if (canvasCtx) {
+          canvasCtx.drawImage(newImg, 0, 0);
+        }
+        // Update state after canvas is redrawn so dimensions display immediately
+        setCurrentImageDataUrl(croppedDataUrl);
+      };
+      newImg.src = croppedDataUrl;
+    };
+    img.src = currentImageDataUrl;
+  };
+
+  const cancelCrop = () => {
+    setIsCropping(false);
+    setCropArea(null);
+    redrawWithDrawings(drawings);
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen bg-gray-900">
-      <div className="bg-gray-800 p-4 flex gap-2 flex-wrap">
+    <div className="bg-gray-800 p-4 flex gap-2 flex-wrap">
         <button
-          onClick={() => setCurrentTool('arrow')}
+          onClick={() => {
+            setCurrentTool('pointer');
+            redrawWithDrawings(drawings);
+          }}
+          className={`px-3 py-2 rounded ${currentTool === 'pointer' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          title="Select and drag annotations"
+        >
+          Pointer
+        </button>
+        <button
+          onClick={() => {
+            setCurrentTool('arrow');
+            setSelectedAnnotationId(null);
+          }}
           className={`px-3 py-2 rounded ${currentTool === 'arrow' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Arrow
         </button>
         <button
-          onClick={() => setCurrentTool('rect')}
+          onClick={() => {
+            setCurrentTool('rect');
+            setSelectedAnnotationId(null);
+          }}
           className={`px-3 py-2 rounded ${currentTool === 'rect' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Rectangle
         </button>
         <button
-          onClick={() => setCurrentTool('circle')}
+          onClick={() => {
+            setCurrentTool('circle');
+            setSelectedAnnotationId(null);
+          }}
           className={`px-3 py-2 rounded ${currentTool === 'circle' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Circle
         </button>
         <button
-          onClick={() => setCurrentTool('line')}
+          onClick={() => {
+            setCurrentTool('line');
+            setSelectedAnnotationId(null);
+          }}
           className={`px-3 py-2 rounded ${currentTool === 'line' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Line
         </button>
         <button
-          onClick={() => setCurrentTool('text')}
+          onClick={() => {
+            setCurrentTool('text');
+            setSelectedAnnotationId(null);
+          }}
           className={`px-3 py-2 rounded ${currentTool === 'text' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Text
         </button>
+        <button
+          onClick={() => {
+            setCurrentTool('crop');
+            setSelectedAnnotationId(null);
+          }}
+          className={`px-3 py-2 rounded ${currentTool === 'crop' ? 'bg-blue-600' : 'bg-gray-700'}`}
+        >
+          Crop
+        </button>
+
+        <div className="px-3 py-2 bg-gray-700 rounded text-white text-sm flex items-center">
+          {canvasDimensions.width > 0 ? `${canvasDimensions.width} × ${canvasDimensions.height} px` : 'Loading...'}
+        </div>
 
         <div className="ml-auto flex gap-2">
           <input
             type="color"
             value={color}
-            onChange={(e) => setColor(e.target.value)}
+            onChange={(e) => {
+              const newColor = e.target.value;
+              setColor(newColor);
+              // If an annotation is selected, update its color
+              if (selectedAnnotationId) {
+                const updatedDrawings = drawings.map(drawing =>
+                  drawing.id === selectedAnnotationId
+                    ? { ...drawing, color: newColor }
+                    : drawing
+                );
+                setDrawings(updatedDrawings);
+                redrawWithDrawings(updatedDrawings);
+              }
+            }}
             className="w-12 h-10 cursor-pointer"
+            title={selectedAnnotationId ? "Change selected annotation color" : "Color for new annotations"}
           />
           <input
             type="range"
-            min="8"
-            max="32"
-            value={fontSize}
-            onChange={(e) => setFontSize(Number(e.target.value))}
+            min="4"
+            max="72"
+            value={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.fontSize || drawings.find(d => d.id === selectedAnnotationId)?.lineWidth || 16) : fontSize}
+            onChange={(e) => {
+              const newSize = Number(e.target.value);
+              
+              if (selectedAnnotationId) {
+                const selectedDrawing = drawings.find(d => d.id === selectedAnnotationId);
+                if (selectedDrawing?.type === 'text') {
+                  setFontSize(newSize);
+                  const updatedDrawings = drawings.map(drawing =>
+                    drawing.id === selectedAnnotationId
+                      ? { ...drawing, fontSize: newSize }
+                      : drawing
+                  );
+                  setDrawings(updatedDrawings);
+                  redrawWithDrawings(updatedDrawings);
+                } else {
+                  setLineWidth(newSize);
+                  const updatedDrawings = drawings.map(drawing =>
+                    drawing.id === selectedAnnotationId
+                      ? { ...drawing, lineWidth: newSize }
+                      : drawing
+                  );
+                  setDrawings(updatedDrawings);
+                  redrawWithDrawings(updatedDrawings);
+                }
+              } else {
+                setFontSize(newSize);
+                setLineWidth(newSize);
+              }
+            }}
             className="w-24"
+            title={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.type === 'text' ? "Font size" : "Border width") : "Size for new annotations"}
           />
+          {selectedAnnotationId && (
+            <div className="px-3 py-2 bg-green-600 rounded text-white text-sm flex items-center">
+              ✓ Selected
+            </div>
+          )}
           <button onClick={handleUndo} className="px-3 py-2 bg-gray-700 rounded">
             Undo
           </button>
@@ -324,7 +712,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       </div>
 
       {showTextInput && (
-        <div className="absolute z-50 bg-gray-800 p-4 rounded shadow-lg" style={{ left: textX, top: textY }}>
+        <div className="fixed z-50 bg-gray-800 p-4 rounded shadow-lg" style={{ left: textPageX, top: textPageY }}>
           <input
             autoFocus
             type="text"
@@ -338,6 +726,20 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
           />
           <button onClick={addText} className="ml-2 px-2 py-1 bg-blue-600 rounded">
             Add
+          </button>
+        </div>
+      )}
+
+      {cropArea && currentTool === 'crop' && (
+        <div className="absolute z-50 bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 p-4 rounded shadow-lg flex gap-2">
+          <div className="text-white text-sm mr-4">
+            {cropArea.width} x {cropArea.height}
+          </div>
+          <button onClick={applyCrop} className="px-4 py-2 bg-green-600 rounded hover:bg-green-700">
+            Apply Crop
+          </button>
+          <button onClick={cancelCrop} className="px-4 py-2 bg-red-600 rounded hover:bg-red-700">
+            Cancel
           </button>
         </div>
       )}
