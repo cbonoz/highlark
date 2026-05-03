@@ -173,7 +173,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
   // Redraw blur preview when invert toggle is clicked
   useEffect(() => {
-    if (currentTool === 'blur' && isBlurring && blurArea !== null) {
+    if (currentTool === 'blur' && blurArea !== null) {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
@@ -231,7 +231,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       };
       img.src = currentImageDataUrl;
     }
-  }, [invertBlur, currentTool, isBlurring, blurArea, currentImageDataUrl, drawings]);
+  }, [invertBlur, currentTool, blurArea, currentImageDataUrl, drawings]);
 
   const redrawCanvas = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, drawnItems: Drawing[], selectedId?: string | null) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
