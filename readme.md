@@ -3,7 +3,7 @@
 **The lightweight open-source screenshot annotator.**
 Capture any screen, add text/arrows/images, and share professional markups instantly.
 
-![Highlark Hero](./public/hero.png)
+![Highlark Features](./images/features-collage.png)
 
 ## Why Highlark?
 
