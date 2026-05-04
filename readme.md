@@ -36,9 +36,10 @@ Capture any screen, add text/arrows/images, and share professional markups insta
 - ✓ **Circles** - Highlight circular regions
 - ✓ **Lines** - Draw straight lines
 - ✓ **Crop** - Crop screenshots and adjust annotations automatically
+- ✓ **Blur** - Redact sensitive information with standard or inverted blur (blur everything except selected area)
 - ✓ **Color Picker** - Choose any color for annotations
 - ✓ **Size/Font Control** - Adjust annotation size, line width, and font size
-- ✓ **Multi-Step Undo** - Undo multiple actions including drawings, text, crops, color changes, and placements
+- ✓ **Multi-Step Undo** - Undo multiple actions including drawings, text, crops, blur, color changes, and placements
 
 ### Storage & Management
 - ✓ **Local Gallery** - All annotations stored securely in your browser using IndexedDB
@@ -58,7 +59,11 @@ Capture any screen, add text/arrows/images, and share professional markups insta
 
 ## Installation
 
-### As Chrome Extension (Development)
+### From Chrome Web Store (Recommended)
+
+[Install Highlark from the Chrome Web Store](https://chromewebstore.google.com/detail/highlark)
+
+### Local Development Installation
 
 1. Clone or navigate to the project folder
 2. Install dependencies:
@@ -102,7 +107,6 @@ bun run pack
 ```
 src/
   ├── background.ts              # Service worker for extension lifecycle
-  ├── contentScript.ts           # Content script for page interactions
   ├── popup/
   │   ├── App.tsx               # Main popup component with UI
   │   └── index.tsx             # Popup entry point
@@ -173,14 +177,24 @@ Highlark prioritizes your privacy:
 - **No Tracking** - No analytics, no telemetry, no ads
 - **Open Source** - Code is transparent and auditable
 
+## Permissions
+
+Highlark requests minimal permissions and avoids unnecessary access:
+
+- **activeTab** - To capture screenshots of your current tab
+- **storage** - To store annotations locally in your browser (IndexedDB)
+- **windows** - To open the annotation editor after capturing
+- **downloads** - To let you download annotated screenshots
+
+**No broad host permissions** - We don't need access to all websites. Everything stays on your device.
+
 ## Future Enhancements
 
 Potential features for future releases:
 
-- [ ] Blur/pixelate sensitive areas
 - [ ] Image stamp/sticker support
 - [ ] OCR for text extraction
-- [ ] Cloud sync (optional)
+- [ ] Cloud sync (optional, opt-in)
 - [ ] Keyboard shortcuts customization
 - [ ] Drawing history/timeline
 - [ ] Collaborative annotations
