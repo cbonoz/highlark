@@ -14,7 +14,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentTool, setCurrentTool] = useState<DrawingTool>('arrow');
   const [color, setColor] = useState('#FF0000');
-  const [size, setSize] = useState(16);
+  const [size, setSize] = useState(24);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
@@ -268,7 +268,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
     switch (item.type) {
       case 'text':
-        ctx.font = `${item.fontSize || 16}px Arial`;
+        ctx.font = `${item.fontSize || 24}px Arial`;
         ctx.fillStyle = item.color || '#FF0000';
         ctx.fillText(item.content || '', item.x, item.y);
         break;
@@ -299,7 +299,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
       switch (item.type) {
         case 'text':
-          const fontSize = item.fontSize || 16;
+          const fontSize = item.fontSize || 24;
           const textMetrics = ctx.measureText(item.content || '');
           const textWidth = textMetrics.width;
           ctx.strokeRect(item.x - padding, item.y - fontSize - padding, textWidth + padding * 2, fontSize + padding * 2);
@@ -361,8 +361,8 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       switch (drawing.type) {
         case 'text':
           // For text, use rough bounding box
-          const textWidth = (drawing.content || '').length * (drawing.fontSize || 16) * 0.6;
-          const textHeight = drawing.fontSize || 16;
+          const textWidth = (drawing.content || '').length * (drawing.fontSize || 24) * 0.6;
+          const textHeight = drawing.fontSize || 24;
           if (
             x >= drawing.x - padding &&
             x <= drawing.x + textWidth + padding &&
@@ -647,6 +647,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       redrawCanvas(ctx, img, drawings);
 
       ctx.strokeStyle = color;
+      ctx.fillStyle = color;
       ctx.lineWidth = size;
 
       switch (currentTool) {
@@ -752,7 +753,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     redrawWithDrawings(updatedDrawings);
   };
 
-  const redrawWithDrawings = (drawnItems: Drawing[]) => {
+  const redrawWithDrawings = (drawnItems: Drawing[], selectedId?: string | null) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -761,7 +762,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
     const img = new Image();
     img.onload = () => {
-      redrawCanvas(ctx, img, drawnItems, selectedAnnotationId);
+      redrawCanvas(ctx, img, drawnItems, selectedId !== undefined ? selectedId : selectedAnnotationId);
     };
     img.src = currentImageDataUrl;
   };
@@ -770,8 +771,23 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const annotatedDataUrl = canvas.toDataURL('image/png');
-    onSave(annotatedDataUrl, drawings);
+    // Only redraw if something is selected to remove the green highlight
+    if (selectedAnnotationId) {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const img = new Image();
+      img.onload = () => {
+        redrawCanvas(ctx, img, drawings, null); // Pass null to exclude selection highlight
+        const annotatedDataUrl = canvas.toDataURL('image/png');
+        onSave(annotatedDataUrl, drawings);
+      };
+      img.src = currentImageDataUrl;
+    } else {
+      // Nothing selected, save as-is (no green box to remove)
+      const annotatedDataUrl = canvas.toDataURL('image/png');
+      onSave(annotatedDataUrl, drawings);
+    }
   };
 
   const applyCrop = () => {
@@ -973,7 +989,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
           }}
           className={`px-3 py-2 rounded text-white ${currentTool === 'rect' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
-          Rectangle
+          Rect
         </button>
         <button
           onClick={() => {
@@ -1048,10 +1064,10 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
           <input
             type="range"
             min="1"
-            max="120"
+            max="200"
             value={selectedAnnotationId ? (() => {
               const drawing = drawings.find(d => d.id === selectedAnnotationId);
-              return drawing?.type === 'text' ? (drawing?.fontSize ?? 16) : (drawing?.lineWidth ?? 16);
+              return drawing?.type === 'text' ? (drawing?.fontSize ?? 24) : (drawing?.lineWidth ?? 16);
             })() : size}
             onChange={(e) => {
               const newSize = Number(e.target.value);
@@ -1067,7 +1083,6 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
                   );
                   setDrawings(updatedDrawings);
                   redrawWithDrawings(updatedDrawings);
-                  saveToHistory(updatedDrawings);
                 } else {
                   const updatedDrawings = drawings.map(drawing =>
                     drawing.id === selectedAnnotationId
@@ -1076,9 +1091,16 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
                   );
                   setDrawings(updatedDrawings);
                   redrawWithDrawings(updatedDrawings);
-                  saveToHistory(updatedDrawings);
                 }
               }
+            }}
+            onMouseUp={() => {
+              // Only save to history when user finishes adjusting
+              saveToHistory(drawings);
+            }}
+            onTouchEnd={() => {
+              // Also handle touch devices
+              saveToHistory(drawings);
             }}
             className="w-24"
             title={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.type === 'text' ? "Font size" : "Border width") : "Size for new annotations"}
