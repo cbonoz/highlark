@@ -14,8 +14,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentTool, setCurrentTool] = useState<DrawingTool>('arrow');
   const [color, setColor] = useState('#FF0000');
-  const [fontSize, setFontSize] = useState(16);
-  const [lineWidth, setLineWidth] = useState(2);
+  const [size, setSize] = useState(16);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
@@ -239,6 +238,20 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedAnnotationId]);
 
+  // Sync size state when selecting an annotation
+  useEffect(() => {
+    if (selectedAnnotationId) {
+      const selectedDrawing = drawings.find(d => d.id === selectedAnnotationId);
+      if (selectedDrawing) {
+        if (selectedDrawing.type === 'text' && selectedDrawing.fontSize) {
+          setSize(selectedDrawing.fontSize);
+        } else if (selectedDrawing.type !== 'text' && selectedDrawing.lineWidth) {
+          setSize(selectedDrawing.lineWidth);
+        }
+      }
+    }
+  }, [selectedAnnotationId, drawings]);
+
   const redrawCanvas = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, drawnItems: Drawing[], selectedId?: string | null) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.drawImage(img, 0, 0);
@@ -286,9 +299,10 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
 
       switch (item.type) {
         case 'text':
-          const textWidth = (item.content || '').length * (item.fontSize || 16) * 0.6;
-          const textHeight = item.fontSize || 16;
-          ctx.strokeRect(item.x - padding, item.y - textHeight - padding, textWidth + padding * 2, textHeight + padding * 2);
+          const fontSize = item.fontSize || 16;
+          const textMetrics = ctx.measureText(item.content || '');
+          const textWidth = textMetrics.width;
+          ctx.strokeRect(item.x - padding, item.y - fontSize - padding, textWidth + padding * 2, fontSize + padding * 2);
           break;
         case 'rect':
           ctx.strokeRect(item.x - padding, item.y - padding, item.width + padding * 2, item.height + padding * 2);
@@ -318,9 +332,13 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
     const headlen = Math.max(8, ctx.lineWidth * 4);
     const angle = Math.atan2(toY - fromY, toX - fromX);
 
+    // Shorten the line so it ends where the arrowhead begins (at 0.6 * headlen)
+    const lineEndX = toX - headlen * 0.6 * Math.cos(angle);
+    const lineEndY = toY - headlen * 0.6 * Math.sin(angle);
+
     ctx.beginPath();
     ctx.moveTo(fromX, fromY);
-    ctx.lineTo(toX, toY);
+    ctx.lineTo(lineEndX, lineEndY);
     ctx.stroke();
 
     // Draw arrow head with fill for better appearance
@@ -629,7 +647,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       redrawCanvas(ctx, img, drawings);
 
       ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth;
+      ctx.lineWidth = size;
 
       switch (currentTool) {
         case 'arrow':
@@ -639,8 +657,13 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
           ctx.strokeRect(startX, startY, x - startX, y - startY);
           break;
         case 'circle':
+          const width = x - startX;
+          const height = y - startY;
+          const centerX = startX + width / 2;
+          const centerY = startY + height / 2;
+          const radius = width / 2;
           ctx.beginPath();
-          ctx.arc(startX, startY, Math.hypot(x - startX, y - startY), 0, Math.PI * 2);
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
           ctx.stroke();
           break;
         case 'line':
@@ -696,7 +719,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       width: x - startX,
       height: y - startY,
       color,
-      lineWidth: currentTool !== 'text' ? lineWidth : undefined,
+      lineWidth: currentTool !== 'text' ? size : undefined,
     };
 
     const updatedDrawings = [...drawings, newDrawing];
@@ -719,7 +742,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
       height: 0,
       content: textInput,
       color,
-      fontSize,
+      fontSize: size,
     };
 
     const updatedDrawings = [...drawings, newDrawing];
@@ -929,17 +952,17 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             setCurrentTool('pointer');
             redrawWithDrawings(drawings);
           }}
-          className={`px-3 py-2 rounded ${currentTool === 'pointer' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          className={`px-3 py-2 rounded text-white ${currentTool === 'pointer' ? 'bg-blue-600' : 'bg-gray-700'}`}
           title="Select and drag annotations"
         >
-          Pointer
+          Selector
         </button>
         <button
           onClick={() => {
             setCurrentTool('arrow');
             setSelectedAnnotationId(null);
           }}
-          className={`px-3 py-2 rounded ${currentTool === 'arrow' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          className={`px-3 py-2 rounded text-white ${currentTool === 'arrow' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Arrow
         </button>
@@ -948,7 +971,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             setCurrentTool('rect');
             setSelectedAnnotationId(null);
           }}
-          className={`px-3 py-2 rounded ${currentTool === 'rect' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          className={`px-3 py-2 rounded text-white ${currentTool === 'rect' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Rectangle
         </button>
@@ -957,7 +980,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             setCurrentTool('circle');
             setSelectedAnnotationId(null);
           }}
-          className={`px-3 py-2 rounded ${currentTool === 'circle' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          className={`px-3 py-2 rounded text-white ${currentTool === 'circle' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Circle
         </button>
@@ -966,7 +989,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             setCurrentTool('line');
             setSelectedAnnotationId(null);
           }}
-          className={`px-3 py-2 rounded ${currentTool === 'line' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          className={`px-3 py-2 rounded text-white ${currentTool === 'line' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Line
         </button>
@@ -975,7 +998,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             setCurrentTool('text');
             setSelectedAnnotationId(null);
           }}
-          className={`px-3 py-2 rounded ${currentTool === 'text' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          className={`px-3 py-2 rounded text-white ${currentTool === 'text' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Text
         </button>
@@ -984,7 +1007,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             setCurrentTool('crop');
             setSelectedAnnotationId(null);
           }}
-          className={`px-3 py-2 rounded ${currentTool === 'crop' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          className={`px-3 py-2 rounded text-white ${currentTool === 'crop' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Crop
         </button>
@@ -993,7 +1016,7 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             setCurrentTool('blur');
             setSelectedAnnotationId(null);
           }}
-          className={`px-3 py-2 rounded ${currentTool === 'blur' ? 'bg-blue-600' : 'bg-gray-700'}`}
+          className={`px-3 py-2 rounded text-white ${currentTool === 'blur' ? 'bg-blue-600' : 'bg-gray-700'}`}
         >
           Blur
         </button>
@@ -1024,16 +1047,19 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
           />
           <input
             type="range"
-            min="4"
-            max="72"
-            value={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.fontSize || drawings.find(d => d.id === selectedAnnotationId)?.lineWidth || 16) : fontSize}
+            min="1"
+            max="120"
+            value={selectedAnnotationId ? (() => {
+              const drawing = drawings.find(d => d.id === selectedAnnotationId);
+              return drawing?.type === 'text' ? (drawing?.fontSize ?? 16) : (drawing?.lineWidth ?? 16);
+            })() : size}
             onChange={(e) => {
               const newSize = Number(e.target.value);
+              setSize(newSize);
 
               if (selectedAnnotationId) {
                 const selectedDrawing = drawings.find(d => d.id === selectedAnnotationId);
                 if (selectedDrawing?.type === 'text') {
-                  setFontSize(newSize);
                   const updatedDrawings = drawings.map(drawing =>
                     drawing.id === selectedAnnotationId
                       ? { ...drawing, fontSize: newSize }
@@ -1041,8 +1067,8 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
                   );
                   setDrawings(updatedDrawings);
                   redrawWithDrawings(updatedDrawings);
+                  saveToHistory(updatedDrawings);
                 } else {
-                  setLineWidth(newSize);
                   const updatedDrawings = drawings.map(drawing =>
                     drawing.id === selectedAnnotationId
                       ? { ...drawing, lineWidth: newSize }
@@ -1050,13 +1076,9 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
                   );
                   setDrawings(updatedDrawings);
                   redrawWithDrawings(updatedDrawings);
+                  saveToHistory(updatedDrawings);
                 }
-              } else {
-                setFontSize(newSize);
-                setLineWidth(newSize);
               }
-              // Save updated state to history
-              saveToHistory(updatedDrawings);
             }}
             className="w-24"
             title={selectedAnnotationId ? (drawings.find(d => d.id === selectedAnnotationId)?.type === 'text' ? "Font size" : "Border width") : "Size for new annotations"}
@@ -1082,13 +1104,13 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
               </button>
             </>
           )}
-          <button onClick={handleUndo} className="px-3 py-2 bg-gray-700 rounded">
+          <button onClick={handleUndo} className="px-3 py-2 bg-gray-700 rounded text-white">
             Undo
           </button>
-          <button onClick={handleSave} className="px-3 py-2 bg-green-600 rounded">
+          <button onClick={handleSave} className="px-3 py-2 bg-green-600 rounded text-white">
             Save
           </button>
-          <button onClick={onCancel} className="px-3 py-2 bg-red-600 rounded">
+          <button onClick={onCancel} className="px-3 py-2 bg-red-600 rounded text-white">
             Cancel
           </button>
         </div>
@@ -1103,12 +1125,26 @@ export function AnnotationCanvas({ imageDataUrl, onSave, onCancel }: CanvasProps
             onChange={(e) => setTextInput(e.target.value)}
             onKeyPress={(e) => {
               if (e.key === 'Enter') addText();
+              if (e.key === 'Escape') {
+                setTextInput('');
+                setShowTextInput(false);
+              }
             }}
             className="px-2 py-1 rounded bg-gray-700 text-white"
             placeholder="Enter text..."
           />
-          <button onClick={addText} className="ml-2 px-2 py-1 bg-blue-600 rounded">
+          <button onClick={addText} className="ml-2 px-2 py-1 bg-blue-600 rounded text-white">
             Add
+          </button>
+          <button 
+            onClick={() => {
+              setTextInput('');
+              setShowTextInput(false);
+            }}
+            className="ml-2 px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-white"
+            title="Cancel (Esc)"
+          >
+            ✕
           </button>
         </div>
       )}

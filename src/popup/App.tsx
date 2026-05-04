@@ -103,7 +103,7 @@ export function App() {
       chrome.windows.create({
         url: annotationUrl,
         type: 'popup',
-        width: 1000,
+        width: 1200,
         height: 800,
       });
 
@@ -149,7 +149,7 @@ export function App() {
       chrome.windows.create({
         url: annotationUrl,
         type: 'popup',
-        width: 1000,
+        width: 1200,
         height: 800,
       });
 
@@ -236,14 +236,14 @@ export function App() {
             <div className="flex gap-2">
               <button
                 onClick={handleOpenDownloads}
-                className="text-blue-400 hover:text-blue-300 font-semibold text-sm px-2 py-1 rounded hover:bg-slate-700 transition"
+                className="text-blue-300 hover:text-white font-semibold text-sm px-2 py-1 rounded hover:bg-slate-700 transition"
                 title="Open Downloads Folder"
               >
                 📁 Downloads
               </button>
               <button
                 onClick={() => setView('home')}
-                className="text-blue-400 hover:text-blue-300 font-semibold"
+                className="text-blue-300 hover:text-white font-semibold"
               >
                 ← Back
               </button>
@@ -284,7 +284,7 @@ export function App() {
                           e.stopPropagation();
                           handleDownloadAnnotation(annotation);
                         }}
-                        className="w-2/3 px-2 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold transition"
+                        className="w-2/3 px-2 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold text-white transition"
                         title="Download"
                       >
                         ⬇ Download
@@ -295,7 +295,7 @@ export function App() {
                           e.stopPropagation();
                           handleDeleteAnnotation(annotation.id);
                         }}
-                        className="w-2/3 px-2 py-1.5 bg-red-600 hover:bg-red-700 rounded text-xs font-semibold transition"
+                        className="w-2/3 px-2 py-1.5 bg-red-600 hover:bg-red-700 rounded text-xs font-semibold text-white transition"
                         title="Remove from Recents (file remains in Downloads)"
                       >
                         ✕ Remove
@@ -334,7 +334,7 @@ export function App() {
               setView('gallery');
               setSelectedAnnotation(null);
             }}
-            className="text-sm text-blue-400 hover:text-blue-300 mt-2"
+            className="text-sm text-blue-300 hover:text-white mt-2"
           >
             ← Back to Recents
           </button>
@@ -351,7 +351,7 @@ export function App() {
         <div className="p-4 border-t border-slate-700 flex gap-2 flex-col">
           <button
             onClick={() => handleDownloadAnnotation(selectedAnnotation)}
-            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold text-sm"
+            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold text-sm text-white"
           >
             Download
           </button>
@@ -361,7 +361,7 @@ export function App() {
               setView('gallery');
               setSelectedAnnotation(null);
             }}
-            className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold text-sm"
+            className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold text-sm text-white"
             title="Remove from Recents (file remains in Downloads)"
           >
             Remove from Recents
@@ -382,7 +382,7 @@ export function App() {
         <button
           onClick={handleCaptureScreenshot}
           disabled={loading}
-          className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95"
+          className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 rounded-lg font-semibold text-white transition transform hover:scale-105 active:scale-95"
         >
           {loading ? 'Capturing...' : '📸 Capture Screenshot'}
         </button>
@@ -390,14 +390,14 @@ export function App() {
         <button
           onClick={handleOpenImage}
           disabled={loading}
-          className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95"
+          className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 rounded-lg font-semibold text-white transition transform hover:scale-105 active:scale-95"
         >
           {loading ? 'Opening...' : '📂 Open Image'}
         </button>
 
         <button
           onClick={() => setView('gallery')}
-          className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold transition"
+          className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-white transition"
         >
           🖼️ View Recents ({annotations.length})
         </button>

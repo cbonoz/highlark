@@ -59,9 +59,9 @@ Capture any screen, add text/arrows/images, and share professional markups insta
 
 ## Installation
 
-<!-- ### From Chrome Web Store (Recommended)
+### From Chrome Web Store (Recommended)
 
-[Install Highlark from the Chrome Web Store](https://chromewebstore.google.com/detail/highlark) -->
+[Install Highlark from the Chrome Web Store](https://chromewebstore.google.com/detail/highlark-screenshot-annot/ahhigbflppojomkaoljjiikahdjoabgi)
 
 ### Local Development Installation
 
