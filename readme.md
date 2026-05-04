@@ -9,7 +9,7 @@ Capture any screen, add text/arrows/images, and share professional markups insta
 
 - **Fast & Simple** — No bloat, just the tools you need
 - **Privacy First** — Runs completely locally in your browser. All your annotations and storage are managed entirely on your computer—nothing is sent to external servers.
-- **Open Source** — Free forever, community-driven
+- **Open Source** — Free, open-source and community-driven
 
 ### Core Features & Use Cases
 
@@ -246,6 +246,10 @@ We were inspired by tools like [MarkupHero](https://markuphero.com/) and wanted 
 - **Issues & Bugs**: Open an issue on GitHub
 - **Feature Requests**: Discuss in the issues section
 - **General Questions**: Check the options page (click extension icon and view settings)
+
+## Disclaimer
+
+Highlark is provided as-is without warranties or guarantees. Use at your own discretion. The extension is community-maintained and may have limitations. Always verify important work independently.
 
 ---
 
